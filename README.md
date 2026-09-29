@@ -5,6 +5,7 @@ problems they encounter while using backend APIs.
 
 Version: **0.1** — protocol and specification.
 Python package: **0.2.0** — FastAPI reference implementation of the v0.1 spec.
+Node.js package: **0.4.0** — Express implementation of the same v0.1 spec.
 
 Normative documents:
 
@@ -14,7 +15,15 @@ Normative documents:
 Reference implementation:
 
 - `src/feedback_protocol/` — Python package (`feedback-protocol` on PyPI).
+- `node/` — Node.js/TypeScript package (`feedback-protocol` on npm).
 - [examples/fastapi/](examples/fastapi/) — minimal runnable FastAPI service.
+- [examples/express/](examples/express/) — minimal runnable Express service.
+
+Both SDKs implement the same protocol: the same feedback JSON sent to
+the Python implementation and the Node.js implementation is semantically
+equivalent (same required fields, same validation, same `fb_…` ID
+format, same receipt shape). `schema/feedback.schema.json` remains the
+source of truth for both; there is no Node-specific protocol.
 
 ## Python package — installation
 
@@ -157,6 +166,132 @@ the HTTP protocol does not change. See `examples/fastapi/app.py` and
   logs only `id` + `type` (never payloads, headers, cookies, or tokens).
   Keep that invariant when adding your own logging, and ask agents to
   redact secrets before submitting.
+
+## Node.js package — installation
+
+Requires Node.js 20+ and Express 4 or 5 (peer dependency).
+
+```bash
+npm install feedback-protocol express
+# from a source checkout (build + tests):
+cd node && npm install && npm test
+```
+
+The published package ships compiled ESM output (`dist/`) with type
+declarations, ready for `import`.
+
+## Node.js package — Express integration
+
+```ts
+import express from "express";
+import { feedbackProtocol } from "feedback-protocol";
+
+const app = express();
+app.use(feedbackProtocol());
+```
+
+This exposes:
+
+- `GET /.well-known/feedback-protocol` — canonical discovery.
+- `POST /feedback` — validated submission, `201` + receipt.
+
+No app-level body parser is required: the middleware reads and parses
+the submission body itself so malformed JSON maps to the spec's `400`.
+
+Custom store, path, and the auth extension point (the package ships no
+auth system — pass your own middleware):
+
+```ts
+import { feedbackProtocol, MemoryFeedbackStore } from "feedback-protocol";
+
+const requireApiKey: RequestHandler = (req, res, next) => {
+  if (req.get("x-api-key") !== "super-secret") {
+    res.status(401).json({ detail: "Invalid API key." });
+    return;
+  }
+  next();
+};
+
+app.use(
+  feedbackProtocol({
+    store: new MemoryFeedbackStore(),
+    auth: requireApiKey,
+  }),
+);
+```
+
+## Node.js package — example request
+
+```bash
+curl -X POST http://localhost:3000/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "missing_feature",
+    "summary": "Users endpoint does not support pagination",
+    "goal": "Retrieve all users",
+    "attempt": {"method": "GET", "path": "/api/v1/users"},
+    "observed": {"status": 200, "item_count": 100000},
+    "missing_capability": "pagination",
+    "suggestion": "Support cursor-based pagination",
+    "agent": {"name": "example-agent", "version": "1.0.0"}
+  }'
+```
+
+## Node.js package — example response
+
+Success (`201 Created`):
+
+```json
+{
+  "id": "fb_f5c7b3b91174cda3c401dc01",
+  "status": "received"
+}
+```
+
+Invalid payload (`400 Bad Request`):
+
+```json
+{
+  "detail": "Invalid feedback payload.",
+  "errors": [{ "path": "$.type", "message": "..." }]
+}
+```
+
+Status codes follow SPEC §3.5: `201` received, `400` invalid feedback,
+`401`/`403` when your `auth` middleware rejects, `429` if you add rate
+limiting, `5xx` for server failures.
+
+## Node.js package — storage
+
+```ts
+import { MemoryFeedbackStore, type FeedbackStore } from "feedback-protocol";
+```
+
+- `FeedbackStore` — interface with `save` / `get` / `list` / `count`.
+  `save()` assigns the `fb_…` ID and the server-side UTC `received_at`
+  timestamp, preserves a client-supplied `timestamp` when present, and
+  returns a `StoredFeedback` record.
+- `MemoryFeedbackStore` — non-persistent in-process implementation for
+  development and tests.
+
+Custom backends (PostgreSQL, Redis, external services) implement
+`FeedbackStore` and are passed as `feedbackProtocol({ store })` — the
+HTTP protocol does not change.
+
+## Node.js package — production considerations
+
+- **Authenticate** via the `auth` option (API key, OAuth2, …). The
+  default middleware is open; unauthenticated public deployments will
+  be spammed.
+- **Rate-limit** with your gateway or Express rate-limiting middleware;
+  return `429` with `Retry-After`.
+- **Persist** with a durable `FeedbackStore` (single writer, bounded
+  retention). Document what you store, how long, and who can access it
+  (SPEC §5). Feedback is triage input — human review is required before
+  any code change (SPEC §7).
+- **Privacy.** Only `id` + `type` are logged (silence with
+  `feedbackProtocol({ logger: false })`). Never log payloads, headers,
+  cookies, or tokens.
 
 ## Agent skill — teaching agents to use the protocol
 
@@ -329,7 +464,7 @@ triage is asynchronous). Errors use standard codes: `400` invalid
 feedback, `401`/`403` unauthorized, `429` rate limited, `5xx` server
 error. See SPEC §3.5.
 
-## 8. Current scope (v0.1 protocol / v0.2 package)
+## 8. Current scope (v0.1 protocol / v0.2–v0.4 implementations)
 
 Protocol:
 
@@ -352,13 +487,28 @@ v0.2 Python package (this repo):
   timestamps, `400`-normalized validation, tests, and a runnable
   `examples/fastapi/` service.
 
+v0.3 agent skill (this repo):
+
+- `skill/SKILL.md`: framework-agnostic instructions teaching agents when
+  and how to report, with ten worked examples.
+
+v0.4 Node.js package (this repo):
+
+- `feedback-protocol` npm distribution with `feedbackProtocol()`
+  Express middleware, strict TypeScript types mirroring the schema,
+  `FeedbackStore` + `MemoryFeedbackStore`, `fb_…` ID generation,
+  server-side UTC timestamps, schema-compatible validation, tests, and
+  a runnable `examples/express/` service.
+- Implements the same v0.1 protocol as the Python package — no
+  Node-specific protocol (see the parity note at the top).
+
 ## 9. What is intentionally NOT included
 
-- npm support, agent skills, centralized aggregation, dashboards.
-- PR generation or autonomous code fixes.
-- Client libraries beyond the FastAPI reference router.
+- Centralized feedback aggregation, dashboards.
+- Automatic issue creation, PR generation, or autonomous code changes.
+- Client libraries beyond the Python and Node.js reference implementations.
 - Databases, storage schemas, or hosted services (beyond the
-  `FeedbackStore` extension interface).
+  `FeedbackStore` extension interfaces).
 - Triage processes, SLAs, or prioritization rules.
 - Spam/reputation scoring.
 - Authentication mechanism mandates (servers define and document their own).
@@ -366,7 +516,7 @@ v0.2 Python package (this repo):
 
 ## 10. Roadmap
 
-Possible directions after v0.2 (not commitments):
+Possible directions after v0.4 (not commitments):
 
 - Richer `attempt`/`observed` evidence conventions, additional examples
   per feedback type; optional `Idempotency-Key` semantics.

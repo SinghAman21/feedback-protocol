@@ -1,0 +1,51 @@
+{
+  "name": "feedback-protocol",
+  "version": "0.4.0",
+  "description": "Node.js/TypeScript implementation of the Feedback Protocol (v0.1 spec): Express middleware for structured feedback reports.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/test/*.test.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist dist-test"
+  },
+  "keywords": [
+    "feedback",
+    "protocol",
+    "express",
+    "api"
+  ],
+  "author": "Feedback Protocol Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://example.org/feedback-protocol"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "express": "^4 || ^5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "express": "^4.21.2",
+    "typescript": "^5.6.0"
+  }
+}

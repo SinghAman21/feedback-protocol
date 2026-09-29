@@ -1,0 +1,17 @@
+{
+  "name": "feedback-protocol-express-example",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "description": "Minimal Express service exposing the Feedback Protocol.",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "feedback-protocol": "file:../../node"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
