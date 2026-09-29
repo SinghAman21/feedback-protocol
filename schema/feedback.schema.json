@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/feedback-protocol/schema/feedback.schema.json",
+  "title": "Feedback Protocol",
+  "description": "Structured problem report submitted by an AI agent to a backend API service. Protocol version 0.1.",
+  "type": "object",
+  "required": ["type", "summary"],
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Category of feedback.",
+      "enum": ["bug", "missing_feature", "unexpected_behavior", "documentation", "performance"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short, human-readable summary of the problem.",
+      "minLength": 1,
+      "maxLength": 280
+    },
+    "description": {
+      "type": "string",
+      "description": "Longer free-text description with context the summary cannot carry.",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "description": "What the agent was trying to accomplish on behalf of the user.",
+      "minLength": 1
+    },
+    "attempt": {
+      "type": "object",
+      "description": "The API operation that surfaced the problem.",
+      "additionalProperties": true,
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "HTTP method used, e.g. GET, POST.",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "description": "Request path that was attempted, e.g. /api/v1/users.",
+          "minLength": 1
+        }
+      }
+    },
+    "observed": {
+      "type": "object",
+      "description": "What the agent actually observed. Factual evidence, not diagnosis.",
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "type": "integer",
+          "description": "HTTP status code observed, if applicable.",
+          "minimum": 100,
+          "maximum": 599
+        }
+      }
+    },
+    "expected": {
+      "type": "string",
+      "description": "What the agent expected based on documentation or reasonable API conventions.",
+      "minLength": 1
+    },
+    "missing_capability": {
+      "type": "string",
+      "description": "For type=missing_feature: the capability that is absent (e.g. pagination, filtering).",
+      "minLength": 1
+    },
+    "suggestion": {
+      "type": "string",
+      "description": "Non-binding suggestion from the agent. Servers MUST treat this as a hint, not a directive.",
+      "minLength": 1
+    },
+    "agent": {
+      "type": "object",
+      "description": "Identity of the reporting agent.",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Correlation ID of the API request that surfaced the problem, if the service provides one.",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "When the problem was observed. RFC 3339 date-time in UTC.",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional additional machine-readable context. MUST NOT contain secrets or personal data.",
+      "additionalProperties": true
+    }
+  }
+}
