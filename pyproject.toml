@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "feedback-protocol"
 version = "0.2.0"
-description = "Python implementation of the Feedback Protocol (v0.1 spec): FastAPI router for agent feedback reports."
+description = "Python implementation of the Feedback Protocol (v0.1 spec): FastAPI router for structured feedback reports."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

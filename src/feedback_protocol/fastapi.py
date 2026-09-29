@@ -154,7 +154,7 @@ def create_feedback_router(
         _submit,
         methods=["POST"],
         status_code=status.HTTP_201_CREATED,
-        summary="Submit agent feedback",
+        summary="Submit feedback",
         dependencies=deps,
         responses={
             400: {"description": "Invalid feedback payload."},

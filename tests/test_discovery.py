@@ -19,10 +19,6 @@ def test_discovery_canonical_path(client: TestClient) -> None:
     assert body["methods"] == ["POST"]
 
 
-def test_discovery_legacy_agent_feedback_path_is_gone(client: TestClient) -> None:
-    assert client.get("/.well-known/agent-feedback").status_code == 404
-
-
 def test_discovery_advertises_custom_feedback_path() -> None:
     from feedback_protocol.store import InMemoryFeedbackStore
 

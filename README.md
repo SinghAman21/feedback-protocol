@@ -158,6 +158,32 @@ the HTTP protocol does not change. See `examples/fastapi/app.py` and
   Keep that invariant when adding your own logging, and ask agents to
   redact secrets before submitting.
 
+## Agent skill — teaching agents to use the protocol
+
+`skill/SKILL.md` is framework-agnostic instructions for any AI agent
+capable of calling APIs. It teaches the agent to:
+
+1. Understand the user's goal and attempt it normally.
+2. Classify any failure (agent error, user/input error, expected behavior,
+   temporary failure, API bug, missing feature, documentation mismatch,
+   performance issue).
+3. Recover where possible (fix its own request, ask the user, retry
+   transient failures) instead of reporting.
+4. Discover support via `GET /.well-known/feedback-protocol` (falling
+   back to explicit API docs only — never blind-probing `/feedback`),
+   collect evidence (facts, not theories about internals), and submit a
+   report with only `type` + `summary` required.
+5. Tell the user the issue was *reported*, never that it was *fixed* —
+   and never include passwords, tokens, cookies, or personal data.
+
+To use it, load `skill/SKILL.md` into the agent's context (e.g. as a
+system prompt, slash-command body, or retrieved instructions) before it
+starts working with APIs. It includes ten worked examples — six where
+feedback is filed (500, documented-404, missing pagination,
+documentation mismatch, unexpected truncation, slow endpoint) and four
+where it must stay silent (bad credentials, agent's own invalid request,
+transient 503, out-of-scope feature request).
+
 ---
 
 ## 1. What is it?
@@ -165,7 +191,7 @@ the HTTP protocol does not change. See `examples/fastapi/app.py` and
 A tiny HTTP + JSON convention with two endpoints:
 
 1. `GET /.well-known/feedback-protocol` — canonical discovery: whether a
-   service accepts agent feedback and where to send it.
+   service accepts structured feedback reports and where to send them.
 2. `POST /feedback` (or the advertised path) — submit a structured problem
    report (bug, missing feature, unexpected behavior, documentation
    mismatch, or performance problem).
