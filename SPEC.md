@@ -1,14 +1,14 @@
-# Agent Feedback Protocol — Specification v0.1
+# Feedback Protocol — Specification v0.1
 
 Status: Draft (v0.1)
 
-This document is the normative specification for the Agent Feedback Protocol.
+This document is the normative specification for the Feedback Protocol.
 It is intended to be understandable to a backend developer who has never
 heard of the project.
 
 ## 1. Overview
 
-The Agent Feedback Protocol is a language-independent convention that lets
+The Feedback Protocol is a language-independent convention that lets
 AI agents report actionable problems they encounter while using backend APIs.
 
 The core idea:
@@ -48,13 +48,13 @@ The current protocol version is `0.1`.
 A service advertises support for the protocol at a well-known URI:
 
 ```http
-GET /.well-known/agent-feedback
+GET /.well-known/feedback-protocol
 ```
 
 ### 2.1 Discovery request
 
 - Method: `GET`
-- Path: exactly `/.well-known/agent-feedback`
+- Path: exactly `/.well-known/feedback-protocol`
 - The request has no body and defines no query parameters in v0.1.
 
 ### 2.2 Discovery response
@@ -83,7 +83,7 @@ fields they do not understand.
 ### 2.3 Discovery rules
 
 - Clients SHOULD first discover the protocol via
-  `GET /.well-known/agent-feedback` before submitting feedback.
+  `GET /.well-known/feedback-protocol` before submitting feedback.
 - If the discovery endpoint is unavailable (non-2xx, network error, or
   invalid body), clients MUST NOT assume that `/feedback` exists.
 - In that case clients MAY use explicitly documented protocol information
@@ -334,7 +334,7 @@ processes, reputation/spam scoring, or autonomous code-fix behavior.
 Discovery:
 
 ```http
-GET /.well-known/agent-feedback HTTP/1.1
+GET /.well-known/feedback-protocol HTTP/1.1
 Host: api.example.com
 ```
 

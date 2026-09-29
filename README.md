@@ -3,25 +3,177 @@
 An open, language-independent protocol that lets AI agents report actionable
 problems they encounter while using backend APIs.
 
-Version: **0.1** — protocol and specification only.
+Version: **0.1** — protocol and specification.
+Python package: **0.2.0** — FastAPI reference implementation of the v0.1 spec.
 
 Normative documents:
 
 - [SPEC.md](SPEC.md) — the full specification (normative).
 - [schema/feedback.schema.json](schema/feedback.schema.json) — the stable JSON Schema (normative).
 
+Reference implementation:
+
+- `src/feedback_protocol/` — Python package (`feedback-protocol` on PyPI).
+- [examples/fastapi/](examples/fastapi/) — minimal runnable FastAPI service.
+
+## Python package — installation
+
+Requires Python 3.10+.
+
+```bash
+pip install feedback-protocol
+# for running the example service:
+pip install "feedback-protocol[examples]"
+# for running the test suite (from a source checkout):
+pip install -e ".[test]"
+```
+
+## Python package — FastAPI integration
+
+Minimal integration (in-memory store, open endpoint — development only):
+
+```python
+from fastapi import FastAPI
+from feedback_protocol.fastapi import feedback_router
+
+app = FastAPI()
+app.include_router(feedback_router)
+```
+
+This exposes:
+
+- `GET /.well-known/feedback-protocol` — canonical discovery serving the discovery document.
+- `POST /feedback` — validated submission, `201` + receipt.
+
+Custom store and path:
+
+```python
+from fastapi import FastAPI
+from feedback_protocol.fastapi import create_feedback_router
+from feedback_protocol.store import InMemoryFeedbackStore
+
+store = InMemoryFeedbackStore()
+app = FastAPI()
+app.include_router(create_feedback_router(store=store))
+```
+
+Protecting the endpoint with authentication (recommended for production —
+the package ships no auth system, only this extension point):
+
+```python
+from fastapi import Depends, FastAPI, Header, HTTPException
+from feedback_protocol.fastapi import create_feedback_router
+from feedback_protocol.store import InMemoryFeedbackStore
+
+async def verify_api_key(x_api_key: str = Header(default="")) -> None:
+    if x_api_key != "super-secret":
+        raise HTTPException(status_code=401, detail="Invalid API key.")
+
+app = FastAPI()
+app.include_router(
+    create_feedback_router(
+        store=InMemoryFeedbackStore(),
+        dependencies=[Depends(verify_api_key)],
+    )
+)
+```
+
+## Python package — example request
+
+```bash
+curl -X POST http://localhost:8000/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "missing_feature",
+    "summary": "Users endpoint does not support pagination",
+    "goal": "Retrieve all users",
+    "attempt": {"method": "GET", "path": "/api/v1/users"},
+    "observed": {"status": 200, "item_count": 100000},
+    "missing_capability": "pagination",
+    "suggestion": "Support cursor-based pagination",
+    "agent": {"name": "example-agent", "version": "1.0.0"}
+  }'
+```
+
+## Python package — example response
+
+Success (`201 Created`):
+
+```json
+{
+  "id": "fb_9f3c2a1b4d5e6f708192a3b4",
+  "status": "received"
+}
+```
+
+Invalid payload (`400 Bad Request` — never `422`; the router normalizes
+FastAPI validation errors to the spec's `400`):
+
+```json
+{
+  "detail": "Invalid feedback payload.",
+  "errors": []
+}
+```
+
+Status codes follow SPEC §3.5: `201` received, `400` invalid feedback,
+`401`/`403` when your auth dependencies reject, `429` if you add rate
+limiting, `5xx` for server failures.
+
+## Python package — storage
+
+No database is required. The package defines a narrow async boundary:
+
+```python
+from feedback_protocol.store import FeedbackStore, InMemoryFeedbackStore
+```
+
+- `FeedbackStore` — abstract class with `save` / `get` / `list` / `count`.
+  `save()` assigns the `fb_…` ID and the server-side UTC `received_at`
+  timestamp, preserves a client-supplied `timestamp` when present, and
+  returns a `StoredFeedback` record.
+- `InMemoryFeedbackStore` — non-persistent in-process implementation for
+  development and tests. Records are lost on restart and are not shared
+  between processes.
+
+Custom backends (PostgreSQL, Redis, external feedback services) implement
+`FeedbackStore` and are passed to `create_feedback_router(store=...)` —
+the HTTP protocol does not change. See `examples/fastapi/app.py` and
+`tests/test_store_ids.py::test_custom_store_implementation_can_back_router`.
+
+## Python package — production considerations
+
+- **Authenticate.** The default router is open. Put it behind your existing
+  auth (API key, OAuth2) via `create_feedback_router(dependencies=[...])`.
+  Unauthenticated public deployments will be spammed.
+- **Rate-limit.** Add your gateway/middleware rate limiting (e.g.
+  slowapi or ingress rules) and return `429` with `Retry-After`.
+- **Persist.** Replace `InMemoryFeedbackStore` with a durable
+  `FeedbackStore` (single writer, bounded retention).
+- **Retain deliberately.** Document what you store, how long, and who can
+  access it (SPEC §5). Feedback is triage input, not an instruction —
+  human review is required before any code change (SPEC §7).
+- **Privacy.** Feedback may embed sensitive request context. This package
+  logs only `id` + `type` (never payloads, headers, cookies, or tokens).
+  Keep that invariant when adding your own logging, and ask agents to
+  redact secrets before submitting.
+
+---
+
 ## 1. What is it?
 
 A tiny HTTP + JSON convention with two endpoints:
 
-1. `GET /.well-known/feedback-protocol` — discover whether a service accepts
-   agent feedback and where to send it.
+1. `GET /.well-known/feedback-protocol` — canonical discovery: whether a
+   service accepts agent feedback and where to send it.
 2. `POST /feedback` (or the advertised path) — submit a structured problem
    report (bug, missing feature, unexpected behavior, documentation
    mismatch, or performance problem).
 
-No SDK, no database, no dashboard, no hosted service. Just a shared shape
-for reports so services can triage them.
+No SDK, no database, no dashboard, no hosted service in the protocol
+itself. Just a shared shape for reports so services can triage them.
+(The Python package above is a reference implementation, not part of
+the wire protocol.)
 
 ## 2. Why does it exist?
 
@@ -30,7 +182,7 @@ problem — a bug, a missing capability, wrong docs, or unusable latency —
 that signal is usually lost: it ends up in a chat transcript, a retry loop,
 or nowhere.
 
-The Agent Feedback Protocol gives that signal a structured home:
+The Feedback Protocol gives that signal a structured home:
 
 - Agents report **evidence, not speculation** (what they tried, what they
   observed, what they expected).
@@ -151,7 +303,9 @@ triage is asynchronous). Errors use standard codes: `400` invalid
 feedback, `401`/`403` unauthorized, `429` rate limited, `5xx` server
 error. See SPEC §3.5.
 
-## 8. Current scope (v0.1)
+## 8. Current scope (v0.1 protocol / v0.2 package)
+
+Protocol:
 
 - Discovery endpoint (`GET /.well-known/feedback-protocol`).
 - Submission endpoint (`POST` to the advertised path).
@@ -164,28 +318,33 @@ error. See SPEC §3.5.
   rate limiting, idempotency, extensibility, human review before code
   changes.
 
-## 9. What is intentionally NOT included in v0.1
+v0.2 Python package (this repo):
 
-- SDKs or client libraries (any language).
-- Databases, storage schemas, or hosted services.
-- Dashboards, notifications, or webhook formats.
+- `feedback-protocol` distribution with `feedback_protocol.fastapi`
+  router, Pydantic models mirroring the schema, `FeedbackStore` +
+  `InMemoryFeedbackStore`, `fb_…` ID generation, server-side UTC
+  timestamps, `400`-normalized validation, tests, and a runnable
+  `examples/fastapi/` service.
+
+## 9. What is intentionally NOT included
+
+- npm support, agent skills, centralized aggregation, dashboards.
+- PR generation or autonomous code fixes.
+- Client libraries beyond the FastAPI reference router.
+- Databases, storage schemas, or hosted services (beyond the
+  `FeedbackStore` extension interface).
 - Triage processes, SLAs, or prioritization rules.
 - Spam/reputation scoring.
-- Autonomous PR agents or automatic code fixes.
 - Authentication mechanism mandates (servers define and document their own).
 - New feedback types or required fields beyond the v0.1 set.
 
-If you are looking for any of these, v0.1 is deliberately not the place —
-open an issue to discuss a future version.
-
 ## 10. Roadmap
 
-Possible directions after v0.1 (not commitments):
+Possible directions after v0.2 (not commitments):
 
-- `v0.2`: optional `Idempotency-Key` semantics, richer `attempt`/`observed`
-  evidence conventions, additional examples per feedback type.
-- `v0.3`: reference server validator + example triage queue schema
-  (still no hosted service).
+- Richer `attempt`/`observed` evidence conventions, additional examples
+  per feedback type; optional `Idempotency-Key` semantics.
+- Reference triage queue schema (still no hosted service).
 - `v1.0`: stability guarantees, version-negotiation rules, multilingual
   summary guidance.
 - Later: opt-in webhooks for receipt status, community SDKs, spam-control
