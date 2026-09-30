@@ -122,4 +122,36 @@ describe("submission", () => {
     });
     assert.equal(res.status, 201);
   });
+
+  it("preserves service, correlation ids and structured expected", async () => {
+    const res = await postJson(srv.base, "/feedback", {
+      type: "missing_feature",
+      summary: "no pagination",
+      expected: { capability: "pagination" },
+      service: { name: "users-api", version: "4.2.1", environment: "production" },
+      session_id: "sess_1",
+      trace_id: "trace_1",
+    });
+    assert.equal(res.status, 201);
+    const record = await srv.store.get(((await res.json()) as { id: string }).id);
+    assert.deepEqual(record?.feedback.expected, { capability: "pagination" });
+    assert.deepEqual(record?.feedback.service, {
+      name: "users-api",
+      version: "4.2.1",
+      environment: "production",
+    });
+    assert.equal(record?.feedback.session_id, "sess_1");
+    assert.equal(record?.feedback.trace_id, "trace_1");
+  });
+
+  it("rejects malformed service and expected shapes with 400", async () => {
+    for (const payload of [
+      { type: "bug", summary: "x", service: 42 },
+      { type: "bug", summary: "x", service: { version: "" } },
+      { type: "bug", summary: "x", expected: 42 },
+      { type: "bug", summary: "x", session_id: "" },
+    ]) {
+      assert.equal((await postJson(srv.base, "/feedback", payload)).status, 400);
+    }
+  });
 });

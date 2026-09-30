@@ -43,6 +43,13 @@ CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
 CREATE INDEX IF NOT EXISTS idx_feedback_received ON feedback(received_at);
 """
 
+# Columns added after v0.5.0: existing databases are migrated on open.
+MIGRATION_COLUMNS = (
+    ("service_version", "TEXT"),
+    ("session_id", "TEXT"),
+    ("trace_id", "TEXT"),
+)
+
 
 def utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -57,6 +64,13 @@ class SqliteFeedbackStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.executescript(SCHEMA)
+            existing = {
+                row[1]
+                for row in self._conn.execute("PRAGMA table_info(feedback)").fetchall()
+            }
+            for column, ddl in MIGRATION_COLUMNS:
+                if column not in existing:
+                    self._conn.execute(f"ALTER TABLE feedback ADD COLUMN {column} {ddl}")
 
     def close(self) -> None:
         with self._lock:
@@ -68,6 +82,9 @@ class SqliteFeedbackStore:
         feedback: Feedback,
         service_name: str,
         service_env: str | None,
+        service_version: str | None = None,
+        session_id: str | None = None,
+        trace_id: str | None = None,
         normalized_summary: str,
         body_json: str,
     ) -> dict[str, Any]:
@@ -77,6 +94,9 @@ class SqliteFeedbackStore:
             "id": generate_feedback_id(),
             "service_name": service_name,
             "service_env": service_env,
+            "service_version": service_version,
+            "session_id": session_id,
+            "trace_id": trace_id,
             "type": feedback.type,
             "status": "new",
             "summary": feedback.summary,
@@ -96,10 +116,12 @@ class SqliteFeedbackStore:
                 row["id"] = generate_feedback_id()
             self._conn.execute(
                 """INSERT INTO feedback
-                   (id, service_name, service_env, type, status, summary,
+                   (id, service_name, service_env, service_version, session_id,
+                    trace_id, type, status, summary,
                     normalized_summary, method, path, missing_capability,
                     received_at, client_ts, body_json)
-                   VALUES (:id, :service_name, :service_env, :type, :status,
+                   VALUES (:id, :service_name, :service_env, :service_version,
+                           :session_id, :trace_id, :type, :status,
                            :summary, :normalized_summary, :method, :path,
                            :missing_capability, :received_at, :client_ts,
                            :body_json)""",

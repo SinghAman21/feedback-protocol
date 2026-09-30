@@ -156,3 +156,80 @@ def test_cluster_detail_and_filters(
 
 def test_empty_store_has_no_clusters(client: TestClient, auth_headers: dict[str, str]) -> None:
     assert client.get("/clusters", headers=auth_headers).json() == {"items": [], "total": 0}
+
+
+def test_record_carries_its_cluster_id(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    seed_sample(client, auth_headers)
+    cid = client.get("/clusters", headers=auth_headers).json()["items"][0]["cluster_id"]
+    for item in client.get("/feedback", headers=auth_headers).json()["items"]:
+        assert item["cluster_id"] == cid
+
+
+def test_cluster_status_new_then_mixed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ids = seed_sample(client, auth_headers)
+    cid = client.get("/clusters", headers=auth_headers).json()["items"][0]["cluster_id"]
+    assert client.get(f"/clusters/{cid}", headers=auth_headers).json()["status"] == "new"
+    client.patch(f"/feedback/{ids[0]}", json={"status": "investigating"}, headers=auth_headers)
+    detail = client.get(f"/clusters/{cid}", headers=auth_headers).json()
+    assert detail["status"] == "mixed"
+    assert detail["status_breakdown"] == {"new": 2, "investigating": 1}
+
+
+def test_report_count_never_auto_accepts(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    for i in range(10):
+        submit(
+            client,
+            auth_headers,
+            {
+                "service": "users-api",
+                "type": "missing_feature",
+                "summary": f"pagination complaint {i}",
+                "attempt": {"method": "GET", "path": "/api/v1/users"},
+                "missing_capability": "pagination",
+            },
+        )
+    cluster = client.get("/clusters", headers=auth_headers).json()["items"][0]
+    assert cluster["count"] == 10
+    assert cluster["status"] == "new"
+    assert cluster["status_breakdown"] == {"new": 10}
+
+
+def test_missing_attempt_fields_cluster_stably(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    submit(client, auth_headers, {"service": "s", "type": "bug", "summary": "one"})
+    submit(client, auth_headers, {"service": "s", "type": "bug", "summary": "two"})
+    body = client.get("/clusters", headers=auth_headers).json()
+    assert body["total"] == 1
+    assert body["items"][0]["count"] == 2
+    assert body["items"][0]["endpoint"] is None
+
+
+def test_old_database_migrates_forward(client: TestClient, auth_headers: dict[str, str], tmp_path) -> None:
+    import sqlite3
+
+    from service.app import create_app
+    from fastapi.testclient import TestClient as TC
+
+    legacy = tmp_path / "legacy.db"
+    conn = sqlite3.connect(str(legacy))
+    conn.execute(
+        "CREATE TABLE feedback (id TEXT PRIMARY KEY, service_name TEXT NOT NULL,"
+        " service_env TEXT, type TEXT NOT NULL, status TEXT NOT NULL,"
+        " summary TEXT NOT NULL, normalized_summary TEXT NOT NULL, method TEXT,"
+        " path TEXT, missing_capability TEXT, received_at TEXT NOT NULL,"
+        " client_ts TEXT, body_json TEXT NOT NULL)"
+    )
+    conn.commit()
+    conn.close()
+
+    with TC(create_app(db_path=str(legacy), api_key="k")) as c:
+        headers = {"Authorization": "Bearer k"}
+        assert c.post("/feedback", json={"type": "bug", "summary": "x"}, headers=headers).status_code == 201
+        assert c.get("/clusters", headers=headers).json()["total"] == 1

@@ -42,6 +42,17 @@ export interface AgentInfo {
   [key: string]: unknown;
 }
 
+/**
+ * The affected service (`service` field), when the reporter knows it.
+ * Either a plain name or an object — all sub-fields optional.
+ */
+export interface ServiceInfo {
+  name?: string;
+  version?: string;
+  environment?: string;
+  [key: string]: unknown;
+}
+
 /** The API operation that surfaced the problem (`attempt` field). */
 export interface AttemptInfo {
   method?: string;
@@ -66,11 +77,21 @@ export interface Feedback {
   goal?: string;
   attempt?: AttemptInfo;
   observed?: ObservedInfo;
-  expected?: string;
+  /**
+   * What was reasonably expected: a statement or structured expectations
+   * (e.g. `{ capability: "pagination" }`). Never a root cause.
+   */
+  expected?: string | Record<string, unknown>;
   missing_capability?: string;
   suggestion?: string;
   agent?: AgentInfo;
+  /** The affected service: a plain name or a {@link ServiceInfo} object. */
+  service?: string | ServiceInfo;
   request_id?: string;
+  /** Broader agent interaction this report belongs to, when available. */
+  session_id?: string;
+  /** Distributed trace ID, when available. */
+  trace_id?: string;
   /** When the problem was observed (RFC 3339 date-time, UTC preferred). */
   timestamp?: string;
   metadata?: Record<string, unknown>;

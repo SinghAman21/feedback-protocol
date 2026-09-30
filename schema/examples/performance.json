@@ -1,0 +1,25 @@
+{
+  "type": "performance",
+  "summary": "GET deployment status takes 45-60s, docs promise p99 under 2s",
+  "goal": "Check the status of deployment d-9",
+  "attempt": {
+    "method": "GET",
+    "path": "/api/v1/deployments/d-9"
+  },
+  "observed": {
+    "status": 200,
+    "durations_s": [48, 55, 60],
+    "retries": 3
+  },
+  "expected": "p99 under 2s per the API docs",
+  "service": {
+    "name": "deployments-api",
+    "version": "4.2.1",
+    "environment": "production"
+  },
+  "session_id": "sess_perf_7",
+  "agent": {
+    "name": "example-agent",
+    "version": "1.0.0"
+  }
+}

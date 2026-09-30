@@ -7,10 +7,16 @@ Run with::
 
 Then::
 
+    # 1. Successful protocol discovery.
     curl http://localhost:8000/.well-known/feedback-protocol
+    # 2. Missing-feature submission.
     curl -X POST http://localhost:8000/feedback \\
       -H 'Content-Type: application/json' \\
       -d '{"type":"missing_feature","summary":"Users endpoint does not support pagination"}'
+    # 3. Bug submission (evidence-rich, still schema-valid).
+    curl -X POST http://localhost:8000/feedback \\
+      -H 'Content-Type: application/json' \\
+      -d '{"type":"bug","summary":"POST /api/v1/projects returns 500","attempt":{"method":"POST","path":"/api/v1/projects"},"observed":{"status":500},"expected":"201 per the API docs"}'
 """
 
 from fastapi import Depends, FastAPI

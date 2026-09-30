@@ -78,12 +78,26 @@ export function validateFeedback(payload: unknown): ValidationResult {
   for (const field of [
     "description",
     "goal",
-    "expected",
     "missing_capability",
     "suggestion",
     "request_id",
+    "session_id",
+    "trace_id",
   ] as const) {
     checkOptionalString(payload, field, `$.${field}`, errors);
+  }
+
+  if (payload["expected"] !== undefined) {
+    const expected = payload["expected"];
+    if (
+      (typeof expected !== "string" || expected.length < 1) &&
+      !isRecord(expected)
+    ) {
+      errors.push({
+        path: "$.expected",
+        message: "$.expected must be a non-empty string or an object",
+      });
+    }
   }
 
   if (payload["attempt"] !== undefined) {
@@ -112,14 +126,42 @@ export function validateFeedback(payload: unknown): ValidationResult {
     }
   }
 
-  if (payload["agent"] !== undefined) {
-    if (!isRecord(payload["agent"])) {
+  if (payload["agent"] !== undefined) {    if (!isRecord(payload["agent"])) {
       errors.push({ path: "$.agent", message: "$.agent must be an object" });
     } else {
       if (typeof payload["agent"]["name"] !== "string" || payload["agent"]["name"].length < 1) {
         errors.push({ path: "$.agent.name", message: "$.agent.name is required" });
       }
       checkOptionalString(payload["agent"], "version", "$.agent.version", errors);
+    }
+  }
+
+  if (payload["service"] !== undefined) {
+    const service = payload["service"];
+    if (typeof service === "string") {
+      if (service.length < 1) {
+        errors.push({
+          path: "$.service",
+          message: "$.service must be a non-empty name or an object",
+        });
+      }
+    } else if (isRecord(service)) {
+      for (const field of ["name", "version", "environment"] as const) {
+        if (
+          service[field] !== undefined &&
+          (typeof service[field] !== "string" || (service[field] as string).length < 1)
+        ) {
+          errors.push({
+            path: `$.service.${field}`,
+            message: `$.service.${field} must be a non-empty string`,
+          });
+        }
+      }
+    } else {
+      errors.push({
+        path: "$.service",
+        message: "$.service must be a non-empty name or an object",
+      });
     }
   }
 

@@ -56,6 +56,44 @@ Three reporters file the same underlying problem (users endpoint has no
 pagination) with different summaries; they appear as one cluster with
 `count: 3`.
 
+## Triage statuses
+
+A report is NOT automatically a confirmed bug, and neither is a cluster
+— a cluster only means "these reports appear related". Statuses:
+
+| Status | Meaning |
+|--------|---------|
+| `new` | Report has been received. Every report starts here, no matter how many similar reports already exist. |
+| `investigating` | Someone is examining the evidence. |
+| `accepted` | A maintainer has determined that the issue/capability request is valid. Set only by humans, never by report count. |
+| `rejected` | The report was reviewed and determined not to require action. |
+| `resolved` | The underlying issue has been addressed. |
+
+A fresh cluster of 37 identical reports has status `new` with breakdown
+`{"new": 37}` — volume is signal for prioritization, never confirmation.
+
+## Clusters
+
+Reports group deterministically on `(service, type, HTTP method,
+endpoint, missing_capability)` — the free-text summary is deliberately
+excluded so different wordings of one problem stay together. Each
+cluster exposes `cluster_id`, `service`, `type`, `endpoint`, `count`,
+`first_seen`/`last_seen`, unanimous-or-`mixed` `status`, a per-status
+breakdown, a representative report, and all member IDs. Every stored
+record also carries its own `cluster_id`, derived the same way.
+
+## Privacy model
+
+Ingestion is always request → validation → scrubbing → persistence;
+nothing raw reaches the database. Redacted before storage: authorization
+headers, bearer/basic credentials, API keys, cookies, passwords,
+secrets, access tokens — including nested objects and credential-shaped
+string values. Preserved: status codes, counts, `request_id`-style
+correlation strings, error names. Operational logs contain only report
+ID, type, and service — never payloads. Treat stored reports as
+internal data: authenticated access, documented retention, no public
+exposure.
+
 ## Notes
 
 - Discovery (`GET /.well-known/feedback-protocol`) and `/health` are

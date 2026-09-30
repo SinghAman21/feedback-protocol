@@ -1,0 +1,21 @@
+{
+  "type": "bug",
+  "summary": "POST /api/v1/projects returns 500 for a valid request",
+  "goal": "Create a project called Atlas",
+  "attempt": {
+    "method": "POST",
+    "path": "/api/v1/projects"
+  },
+  "observed": {
+    "status": 500,
+    "error": "internal_error"
+  },
+  "expected": "201 with the created project, per the API docs",
+  "request_id": "req_123",
+  "session_id": "sess_abc",
+  "trace_id": "trace_001",
+  "agent": {
+    "name": "example-agent",
+    "version": "1.0.0"
+  }
+}

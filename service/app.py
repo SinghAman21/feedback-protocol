@@ -34,7 +34,12 @@ from feedback_protocol.models import (
     FeedbackReceipt,
 )
 from service.auth import api_key_auth
-from service.cluster import cluster_id_for, group_key_for, normalize_summary
+from service.cluster import (
+    cluster_id_for,
+    cluster_status,
+    group_key_for,
+    normalize_summary,
+)
 from service.db import SqliteFeedbackStore
 from service.models import (
     TRIAGE_STATUSES,
@@ -61,11 +66,14 @@ def row_to_record(row: dict[str, Any]) -> FeedbackRecord:
     return FeedbackRecord(
         id=row["id"],
         service=ServiceIdentity(
-            name=row["service_name"], environment=row["service_env"]
+            name=row["service_name"],
+            version=row.get("service_version"),
+            environment=row["service_env"],
         ),
         status=TriageStatus(row["status"]),
         received_at=datetime.fromisoformat(row["received_at"]),
         feedback=Feedback.model_validate(body),
+        cluster_id=cluster_id_for(group_key_for(row)),
     )
 
 
@@ -91,6 +99,7 @@ def build_clusters(rows: list[dict[str, Any]]) -> list[ClusterInfo]:
                 count=len(members),
                 first_seen=datetime.fromisoformat(members[0]["received_at"]),
                 last_seen=datetime.fromisoformat(members[-1]["received_at"]),
+                status=cluster_status([m["status"] for m in members]),
                 status_breakdown=breakdown,
                 representative=representative,
                 feedback_ids=[m["id"] for m in members],
@@ -155,6 +164,9 @@ def create_app(
             feedback=feedback,
             service_name=service.name,
             service_env=service.environment,
+            service_version=service.version,
+            session_id=feedback.session_id,
+            trace_id=feedback.trace_id,
             normalized_summary=normalize_summary(feedback.summary),
             body_json=json.dumps(scrubbed),
         )

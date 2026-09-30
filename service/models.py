@@ -40,13 +40,17 @@ class ServiceIdentity(BaseModel):
     """Which participating service the feedback is about.
 
     Accepts a plain string (``"payments-api"``) or an object
-    (``{"name": "payments-api", "environment": "production"}``).
+    (``{"name": "payments-api", "version": "4.2.1",
+    "environment": "production"}``). Name, version, and environment are
+    all optional at ingestion: reporters send what they know, and the
+    service normalizes what is missing to ``"unknown"``.
     Extra keys are preserved so the model stays extensible.
     """
 
     model_config = ConfigDict(extra="allow")
 
     name: str = Field(min_length=1)
+    version: str | None = Field(default=None, min_length=1)
     environment: str | None = Field(default=None, min_length=1)
 
 
@@ -79,10 +83,19 @@ class FeedbackRecord(BaseModel):
     status: TriageStatus = TriageStatus.new
     received_at: datetime
     feedback: Feedback
+    cluster_id: str = Field(
+        description="Deterministic cluster this report belongs to, derived "
+        "from its grouping key (same derivation as the cluster listing)."
+    )
 
 
 class ClusterInfo(BaseModel):
-    """A deterministic group of reports about the same underlying problem."""
+    """A deterministic group of reports about the same underlying problem.
+
+    A cluster means "these reports appear related" — it is NOT a
+    confirmed bug. Triage ``status`` is unanimous member status, or
+    ``"mixed"`` when members disagree (e.g. after partial triage).
+    """
 
     model_config = ConfigDict(extra="allow")
 
@@ -95,6 +108,9 @@ class ClusterInfo(BaseModel):
     count: int
     first_seen: datetime
     last_seen: datetime
+    status: str = Field(
+        description='Unanimous member triage status, or "mixed" when members disagree.'
+    )
     status_breakdown: dict[str, int] = Field(default_factory=dict)
     representative: FeedbackRecord
     feedback_ids: list[str] = Field(default_factory=list)

@@ -11,6 +11,7 @@ from feedback_protocol.models import (
     FeedbackReceipt,
     FeedbackTypeEnum,
     ObservedInfo,
+    ServiceInfo,
     StoredFeedback,
 )
 from feedback_protocol.ids import generate_feedback_id, is_feedback_id
@@ -32,6 +33,7 @@ __all__ = [
     "FeedbackStore",
     "InMemoryFeedbackStore",
     "ObservedInfo",
+    "ServiceInfo",
     "StoredFeedback",
     "generate_feedback_id",
     "is_feedback_id",

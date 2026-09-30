@@ -26,6 +26,28 @@ The protocol defines only two things:
 It does NOT define storage, dashboards, triage automation, code generation,
 SDKs, or hosted services. See [README.md](README.md) for out-of-scope items.
 
+### Architectural layers
+
+This specification is the conceptual source of truth; the JSON Schema
+(`schema/feedback.schema.json`) is the machine-readable contract. Around
+them sit four layers:
+
+1. **Protocol** (this document + the schema): discovery, submission,
+   validation rules, status codes, and reporting semantics.
+2. **SDK implementations** (e.g. Python, TypeScript): language bindings
+   that validate reports and expose the two endpoints. SDKs implement
+   the protocol — they never extend the wire format unilaterally.
+3. **Agent Skill** (`skill/SKILL.md`): instructions teaching agents when
+   to report, what evidence to collect, and what never to report.
+4. **Reference feedback server** (`service/`): an OPTIONAL centralized
+   store with aggregation and human triage.
+
+Explicitly: the centralized server is optional and is NOT required by
+the protocol. A service can expose `POST /feedback` directly (using an
+SDK or a hand-rolled handler) without ever running the central server.
+Nothing in this specification makes the central server a hidden
+requirement.
+
 ### 1.1 Conformance language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -120,12 +142,15 @@ without knowing the internal cause, and must not be forced to speculate.
 | `description`        | string | No       | all        | Longer context the summary cannot carry. |
 | `goal`               | string | No       | all        | What the agent was trying to accomplish for the user. |
 | `attempt`            | object | No       | all        | The operation attempted. May contain `method` (e.g. `"GET"`) and `path` (e.g. `"/api/v1/users"`). Additional evidence fields are allowed. |
-| `observed`           | object | No       | all        | What was actually observed (facts). May contain `status` (HTTP status code) plus any other evidence. |
-| `expected`           | string | No       | all        | What was expected from docs or reasonable conventions. |
+| `observed`           | object | No       | all        | What was actually observed (facts). May contain `status` (HTTP status code) plus any other evidence (see §3.6). |
+| `expected`           | string/object | No | all   | What was reasonably expected: a statement (string) or structured expectations (object, e.g. `{"capability": "pagination"}`). Describes the contract, never a claimed root cause. |
 | `missing_capability` | string | No       | `missing_feature` (typical) | The absent capability, e.g. `"pagination"`. |
 | `suggestion`         | string | No       | all        | Non-binding suggestion, e.g. `"Support cursor-based pagination"`. Hints only. |
-| `agent`              | object | No       | all        | Reporter identity: `name` (required if `agent` present), `version` (optional). |
+| `agent`              | object | No       | all        | Reporter identity: `name` (required if `agent` present), `version` (optional). Kept separate from the affected service. |
+| `service`            | string/object | No | all   | The affected service: a plain name (e.g. `"payments-api"`) or an object with `name` and optional `version` / `environment`. All sub-fields optional; servers normalize what is missing. |
 | `request_id`         | string | No       | all        | Correlation ID of the triggering request, if provided by the service. |
+| `session_id`         | string | No       | all        | Identifier of the broader agent interaction, when available. |
+| `trace_id`           | string | No       | all        | Distributed tracing identifier, when available. |
 | `timestamp`          | string | No       | all        | RFC 3339 date-time (UTC) when observed, e.g. `"2026-01-15T12:34:56Z"`. |
 | `metadata`           | object | No       | all        | Extra machine-readable context. MUST NOT contain secrets or personal data. |
 
@@ -204,6 +229,56 @@ Servers SHOULD use the following status codes:
 | Rate limiting | `429 Too Many Requests` | Client is sending too much feedback. Respect `Retry-After` if present. |
 | Server error | `5xx` | `500 Internal Server Error` (or `502`/`503` as appropriate) for transient or persistent server failures. Clients MAY retry with backoff; see §6. |
 
+### 3.6 Evidence model
+
+A report conceptually separates five concerns. Only `type` and `summary`
+are ever required; the rest are collected opportunistically, and a field
+is omitted when the reporter does not know it — never guessed:
+
+- **Goal** (`goal`): what the agent was trying to accomplish.
+  One sentence, in user terms.
+- **Attempt** (`attempt`): what the agent actually did. At minimum the
+  HTTP `method` and `path`; additional request context is allowed.
+- **Observed** (`observed`): what actually happened — facts only.
+  Conventional keys include `status` (HTTP status code), error codes or
+  messages returned by the API, counts (`item_count`), timings
+  (`durations_s`, `duration_ms`), retry counts, and the service's
+  `request_id`. Do NOT store complete request or response bodies by
+  default; redacted excerpts or counts carry the signal without the
+  privacy cost.
+- **Expected** (`expected`): what the agent reasonably expected, as a
+  statement or a small structure (e.g. `{"capability": "pagination"}`).
+  It describes the contract (docs or reasonable convention) — never a
+  claimed root cause. There is no field for root-cause diagnosis, by
+  design: the agent reports evidence, maintainers determine causes.
+- **Evidence** (everything above, jointly): objective information
+  supporting the report. Interpretation (`suggestion`) is always a
+  non-binding hint.
+
+Every feedback type MUST be expressible without forcing unrelated
+fields: a `bug` needs `attempt` + `observed` + `expected`; a
+`missing_feature` needs `goal` + `attempt` + `missing_capability`; a
+`performance` report needs timing evidence; none of them requires the
+others' fields.
+
+### 3.7 Correlation identifiers
+
+Four identifiers exist at different scopes. None except the server-side
+receipt is required:
+
+- `feedback_id` — identifies the feedback report. It is assigned by the
+  server at ingestion (e.g. `fb_…` in the receipt object) and MUST NOT
+  be sent by the reporter. Clients treat it as opaque.
+- `request_id` — identifies the relevant API request, when the service
+  supplies one (e.g. echoed back in an error body).
+- `session_id` — identifies the broader agent interaction the report
+  belongs to, when available.
+- `trace_id` — identifies distributed tracing, when available.
+
+Servers SHOULD preserve the reporter-supplied identifiers verbatim so
+reports can be joined back to requests, sessions, and traces during
+investigation.
+
 ## 4. Reporting semantics — what counts as feedback
 
 ### 4.1 Agents MUST NOT report ordinary user errors as API bugs
@@ -264,6 +339,15 @@ provide `observed` evidence.
   and who can access it.
 - Servers MUST NOT require agents to submit secrets or personal data in
   order to file feedback.
+- Servers that persist feedback MUST sanitize before persisting. The
+  ingestion flow MUST be: request → validation → sanitization/scrubbing
+  → persistence — never persistence first. At minimum, authorization
+  headers, bearer tokens, API keys, cookies, passwords, secrets, and
+  obvious access tokens MUST NOT reach durable storage, including inside
+  nested objects and credential-shaped string values. Useful technical
+  evidence (status codes, counts, `request_id` values) MUST be preserved.
+- Servers MUST NOT log complete raw feedback payloads. Operational logs
+  SHOULD be limited to routing metadata (report ID, type, service).
 
 ## 6. Authentication, rate limiting, idempotency
 
@@ -325,9 +409,35 @@ provide `observed` evidence.
 
 ## 8. Out of scope for v0.1
 
-v0.1 intentionally does not define: SDKs, client libraries, persistent
-storage schemas, dashboards, notification/webhook formats, SLA or triage
-processes, reputation/spam scoring, or autonomous code-fix behavior.
+v0.1 intentionally does not define: persistent storage schemas,
+dashboards, notification/webhook formats, SLA or triage processes,
+reputation/spam scoring, or autonomous code-fix behavior.
+
+Note: SDKs, an agent skill, and a reference central server exist in this
+repository as separate layers (§1). They implement or use the protocol;
+they are not part of it, and the protocol does not require them.
+
+## 9. Protocol versioning rules
+
+The protocol version (currently `0.1`, advertised in discovery) evolves
+under these rules. No complicated negotiation system exists yet:
+
+- Additive optional fields MUST NOT break existing clients or servers.
+  A v0.1 reporter talking to a newer server (or vice versa) keeps
+  working because unknown fields are ignored and no new field is
+  required. The `service`, `session_id`, `trace_id`, and structured
+  `expected` fields were added exactly this way.
+- Removing a field, making an optional field required, or adding a
+  required field REQUIRES a major protocol version change.
+- Changing the semantics of an existing field REQUIRES explicit
+  versioning — never a silent reinterpretation.
+- Implementations MUST advertise the protocol version they speak in the
+  discovery document (`version`), distinct from their own package
+  version.
+- Schema changes MUST be tested for compatibility: every previously
+  valid example MUST still validate, and SDK validators MUST agree with
+  the schema file (see the shared `schema/examples/` fixtures and the
+  cross-implementation compatibility tests).
 
 ## Appendix A. Minimal exchange
 

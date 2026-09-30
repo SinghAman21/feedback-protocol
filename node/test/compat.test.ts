@@ -7,7 +7,8 @@
  */
 
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
@@ -42,6 +43,17 @@ describe("protocol compatibility", () => {
     assert.equal(validateWithSchema(CANONICAL_EXAMPLE), true);
   });
 
+  it("shared schema/examples fixtures are valid under both", () => {
+    const dir = join(dirname(schemaPath), "examples");
+    const files = readdirSync(dir).filter((f) => f.endsWith(".json")).sort();
+    assert.ok(files.length >= 4, `expected fixtures, got: ${files}`);
+    for (const file of files) {
+      const payload = JSON.parse(readFileSync(join(dir, file), "utf8")) as unknown;
+      assert.equal(validateWithSchema(payload), true, `schema: ${file}`);
+      assert.equal(validateFeedback(payload).ok, true, `node validator: ${file}`);
+    }
+  });
+
   it("our validator agrees with the schema on every payload", () => {
     const cases: Array<[string, unknown, boolean]> = [
       ["canonical", CANONICAL_EXAMPLE, true],
@@ -49,6 +61,17 @@ describe("protocol compatibility", () => {
       ["minimal documentation", { type: "documentation", summary: "x" }, true],
       ["full fields", { ...CANONICAL_EXAMPLE, description: "d", expected: "e", request_id: "r", timestamp: "2026-01-15T12:34:56Z", metadata: { k: "v" } }, true],
       ["unknown top-level field", { type: "bug", summary: "x", future: 1 }, true],
+      ["expected as object", { type: "bug", summary: "x", expected: { capability: "pagination" } }, true],
+      ["expected empty string", { type: "bug", summary: "x", expected: "" }, false],
+      ["expected number", { type: "bug", summary: "x", expected: 42 }, false],
+      ["service as name", { type: "bug", summary: "x", service: "payments-api" }, true],
+      ["service empty name", { type: "bug", summary: "x", service: "" }, false],
+      ["service as object", { type: "bug", summary: "x", service: { name: "p", version: "4.2.1", environment: "prod" } }, true],
+      ["service object empty", { type: "bug", summary: "x", service: {} }, true],
+      ["service as number", { type: "bug", summary: "x", service: 42 }, false],
+      ["service bad version", { type: "bug", summary: "x", service: { name: "p", version: "" } }, false],
+      ["session and trace", { type: "bug", summary: "x", session_id: "s", trace_id: "t" }, true],
+      ["empty session", { type: "bug", summary: "x", session_id: "" }, false],
       ["empty object", {}, false],
       ["missing type", { summary: "x" }, false],
       ["missing summary", { type: "bug" }, false],

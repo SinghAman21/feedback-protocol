@@ -1,0 +1,19 @@
+{
+  "type": "documentation",
+  "summary": "Docs describe ?status filter that the API rejects",
+  "goal": "Filter orders by status",
+  "attempt": {
+    "method": "GET",
+    "path": "/api/v1/orders"
+  },
+  "observed": {
+    "status": 400,
+    "error": "unknown_query_param: status"
+  },
+  "expected": "Docs list ?status=paid as a supported filter",
+  "service": "orders-api",
+  "agent": {
+    "name": "example-agent",
+    "version": "1.0.0"
+  }
+}

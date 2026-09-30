@@ -103,6 +103,16 @@ A good report contains facts. Collect these fields when available:
 - `suggestion` — a non-binding hint (e.g. `"Support cursor-based
   pagination"`). Never a directive; you do not know the internals.
 - `request_id` — the service's correlation ID, if it provided one.
+- `session_id` / `trace_id` — your interaction or trace identifiers, when
+  available. They let maintainers join the report back to logs.
+- `service` — which service had the problem: a plain name
+  (`"payments-api"`) or `{name, version, environment}`. Send what you
+  know; every sub-field is optional.
+- `expected` — a short statement, or a small structure for capability
+  expectations (e.g. `{"capability": "pagination"}`). Never a root-cause
+  claim: you report evidence, maintainers determine causes.
+- Timing evidence for slowness goes in `observed` (durations, retry
+  counts) — never full request/response bodies.
 - `agent.name` / `agent.version` — your own identity.
 
 Distinguish **evidence** (what you saw) from **speculation** (why you

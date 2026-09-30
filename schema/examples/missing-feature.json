@@ -1,0 +1,22 @@
+{
+  "type": "missing_feature",
+  "summary": "Users endpoint does not support pagination",
+  "goal": "Retrieve all users",
+  "attempt": {
+    "method": "GET",
+    "path": "/api/v1/users"
+  },
+  "observed": {
+    "status": 200,
+    "item_count": 100000
+  },
+  "expected": {
+    "capability": "pagination"
+  },
+  "missing_capability": "pagination",
+  "suggestion": "Support cursor-based pagination",
+  "agent": {
+    "name": "example-agent",
+    "version": "1.0.0"
+  }
+}

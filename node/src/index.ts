@@ -25,6 +25,7 @@ export type {
   FeedbackReceipt,
   FeedbackType,
   ObservedInfo,
+  ServiceInfo,
   StoredFeedback,
 } from "./types.js";
 export { generateFeedbackId, isFeedbackId, ID_PREFIX } from "./ids.js";

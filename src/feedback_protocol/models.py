@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 FeedbackType = Literal[
     "bug", "missing_feature", "unexpected_behavior", "documentation", "performance"
@@ -29,13 +29,35 @@ DEFAULT_FEEDBACK_PATH = "/feedback"
 
 
 class AgentInfo(BaseModel):
-    """Identity of the reporting agent (`agent` field)."""
+    """Identity of the reporting agent (`agent` field).
+
+    Kept separate from the affected service (`service` field): the agent
+    reports the problem, the service is where it was observed.
+    """
 
     model_config = ConfigDict(extra="allow")
 
     name: str = Field(min_length=1, description="Agent name, e.g. 'example-agent'.")
     version: str | None = Field(
         default=None, min_length=1, description="Agent version, e.g. '1.0.0'."
+    )
+
+
+class ServiceInfo(BaseModel):
+    """The affected service (`service` field), when the reporter knows it.
+
+    All sub-fields are optional: reporters send what they know, and
+    servers normalize what is missing. Never mandatory.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str | None = Field(default=None, min_length=1)
+    version: str | None = Field(
+        default=None, min_length=1, description="Service version, e.g. '4.2.1'."
+    )
+    environment: str | None = Field(
+        default=None, min_length=1, description="E.g. 'production'."
     )
 
 
@@ -69,16 +91,47 @@ class Feedback(BaseModel):
     goal: str | None = Field(default=None, min_length=1)
     attempt: AttemptInfo | None = None
     observed: ObservedInfo | None = None
-    expected: str | None = Field(default=None, min_length=1)
+    expected: str | dict[str, Any] | None = Field(
+        default=None,
+        description="What was reasonably expected: a statement or structured "
+        "expectations (e.g. {'capability': 'pagination'}). Never a root cause.",
+    )
     missing_capability: str | None = Field(default=None, min_length=1)
     suggestion: str | None = Field(default=None, min_length=1)
     agent: AgentInfo | None = None
+    service: str | ServiceInfo | None = Field(
+        default=None,
+        description="The affected service: a plain name or an object with "
+        "name/version/environment.",
+    )
     request_id: str | None = Field(default=None, min_length=1)
+    session_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Broader agent interaction this report belongs to, when available.",
+    )
+    trace_id: str | None = Field(
+        default=None, min_length=1, description="Distributed trace ID, when available."
+    )
     timestamp: datetime | None = Field(
         default=None,
         description="When the problem was observed (RFC 3339 date-time, UTC preferred).",
     )
     metadata: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("expected")
+    @classmethod
+    def _non_empty_expected_string(cls, v: str | dict[str, Any] | None) -> Any:
+        if isinstance(v, str) and not v:
+            raise ValueError("expected must be a non-empty string or an object")
+        return v
+
+    @field_validator("service")
+    @classmethod
+    def _non_empty_service_string(cls, v: str | ServiceInfo | None) -> Any:
+        if isinstance(v, str) and not v:
+            raise ValueError("service must be a non-empty name or an object")
+        return v
 
 
 class DiscoveryResponse(BaseModel):

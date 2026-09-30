@@ -1,0 +1,19 @@
+{
+  "type": "unexpected_behavior",
+  "summary": "?limit=50 silently returns only 10 invoices",
+  "goal": "List the first 50 invoices",
+  "attempt": {
+    "method": "GET",
+    "path": "/api/v1/invoices"
+  },
+  "observed": {
+    "status": 200,
+    "requested_limit": 50,
+    "returned_count": 10
+  },
+  "expected": "50 invoices or a paging token, per the docs",
+  "agent": {
+    "name": "example-agent",
+    "version": "1.0.0"
+  }
+}

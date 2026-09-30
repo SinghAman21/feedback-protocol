@@ -295,6 +295,53 @@ HTTP protocol does not change.
   `feedbackProtocol({ logger: false })`). Never log payloads, headers,
   cookies, or tokens.
 
+## Complete architecture
+
+```text
+                  Agent
+                    │
+                    ▼
+              Backend API
+                    │
+             problem encountered
+                    │
+                    ▼
+        /.well-known/feedback-protocol
+                    │
+                    ▼
+               /feedback
+                    │
+                    ▼
+          Optional central server
+                    │
+                    ▼
+             aggregation
+                    │
+                    ▼
+                triage
+                    │
+                    ▼
+          future investigation
+                    │
+                    ▼
+             future PR agent
+                    │
+                    ▼
+             human approval
+```
+
+Four layers, matching SPEC §1: the **protocol** (discovery +
+submission, this is the contract), **SDK implementations** (Python,
+TypeScript — they implement the protocol), the **agent skill**
+(teaches agents when and how to report), and the **optional central
+server** (storage, deterministic aggregation, human triage).
+
+The central server is optional: a service can expose `/feedback`
+directly via an SDK and never run it. Automatic code modification and
+automatic merging are NOT part of the current project — the pipeline
+ends at human triage, and any future investigation/PR stages end at
+human approval.
+
 ## Central service — architecture (v0.5)
 
 The central service turns individual reports into engineering signals:
@@ -548,8 +595,10 @@ Protocol:
 
 - Discovery endpoint (`GET /.well-known/feedback-protocol`).
 - Submission endpoint (`POST` to the advertised path).
-- Stable JSON Schema with 5 feedback types and 12 top-level fields
-  (2 required, 10 optional).
+- Stable JSON Schema with 5 feedback types and 16 top-level fields
+  (2 required, 14 optional — additive under SPEC §9: `service`,
+  `session_id`, `trace_id`, and structured `expected` joined later
+  without breaking v0.1 reporters).
 - Reporting semantics (what counts as feedback vs. agent/user error).
 - Response receipt shape + HTTP status code guidance.
 - Design principles: language independence, machine readability, evidence
