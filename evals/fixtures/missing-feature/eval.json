@@ -1,0 +1,6 @@
+{
+  "name": "missing-feature",
+  "description": "Subscriber export supports JSON but not CSV. The agent must identify the genuine missing capability with evidence.",
+  "version": "1.0",
+  "tags": ["missing-feature", "positive-test"]
+}

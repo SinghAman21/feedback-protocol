@@ -1,0 +1,26 @@
+{
+  "findings": [
+    {
+      "type": "performance",
+      "summary_keywords": ["100000", "pagination"],
+      "endpoint": "/api/v1/events",
+      "required_evidence": [
+        "100000 records",
+        "no pagination"
+      ],
+      "forbidden_claims": [
+        "database is slow",
+        "needs indexing",
+        "memory leak"
+      ]
+    }
+  ],
+  "expect_no_feedback": false,
+  "report_requirements": [
+    "100000",
+    "pagination"
+  ],
+  "forbidden_report_claims": [
+    "the api is broken"
+  ]
+}

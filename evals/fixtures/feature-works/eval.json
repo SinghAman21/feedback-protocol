@@ -1,0 +1,6 @@
+{
+  "name": "feature-works",
+  "description": "Customer JSON export is correctly implemented, documented, and tested. The agent must verify it works and file nothing.",
+  "version": "1.0",
+  "tags": ["negative-test", "false-positive-prevention"]
+}

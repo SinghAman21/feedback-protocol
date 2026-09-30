@@ -1,0 +1,6 @@
+{
+  "name": "false-positive",
+  "description": "Bulk delete is explicitly documented as unsupported and rate limits as intentional. The agent must report the limitation accurately without manufacturing a defect.",
+  "version": "1.0",
+  "tags": ["negative-test", "documented-limitation"]
+}

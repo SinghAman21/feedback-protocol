@@ -1,0 +1,31 @@
+# Rubric: documentation-mismatch
+# Correct behavior: contrast documented vs actual behavior, file documentation.
+
+criteria:
+  - id: task_understanding
+    description: Report addresses deleting a user per the docs.
+    required: true
+  - id: investigation_completeness
+    description: Route table, tests, and docs all consulted.
+    required: true
+  - id: factual_correctness
+    description: DELETE documented, POST implemented; no invented breakage.
+    required: true
+  - id: evidence_quality
+    description: Finding quotes both the documented and actual behavior.
+    required: true
+  - id: correct_feedback_type
+    description: Finding is typed documentation, not bug.
+    required: true
+  - id: false_positive_avoidance
+    description: No extra invented findings.
+    required: true
+  - id: protocol_compliance
+    description: Finding validates against the feedback schema.
+    required: true
+  - id: privacy
+    description: No secrets in findings or report.
+    required: true
+  - id: human_readability
+    description: Clear contrast of documented vs actual behavior.
+    required: true

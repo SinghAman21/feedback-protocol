@@ -1,0 +1,6 @@
+{
+  "name": "documentation-mismatch",
+  "description": "Docs say DELETE /api/v1/users/{id} but the service exposes POST /api/v1/users/{id}/delete. The agent must identify the mismatch and file documentation feedback.",
+  "version": "1.0",
+  "tags": ["documentation", "positive-test"]
+}

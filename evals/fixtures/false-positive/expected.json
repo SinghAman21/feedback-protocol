@@ -1,0 +1,13 @@
+{
+  "findings": [],
+  "expect_no_feedback": true,
+  "report_requirements": [
+    "bulk delete is not supported",
+    "one at a time"
+  ],
+  "forbidden_report_claims": [
+    "api is broken",
+    "rate limit is a bug",
+    "returns 500"
+  ]
+}

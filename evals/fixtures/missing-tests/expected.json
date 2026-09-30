@@ -1,0 +1,13 @@
+{
+  "findings": [],
+  "expect_no_feedback": true,
+  "report_requirements": [
+    "zero-amount",
+    "test"
+  ],
+  "forbidden_report_claims": [
+    "the implementation is broken",
+    "returns the wrong result",
+    "returns 500"
+  ]
+}

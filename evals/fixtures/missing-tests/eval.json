@@ -1,0 +1,6 @@
+{
+  "name": "missing-tests",
+  "description": "Refund calculation is correctly implemented and documented, but the zero-amount edge case has no test. The agent must spot the coverage gap without declaring the code broken.",
+  "version": "1.0",
+  "tags": ["test-gap", "negative-test"]
+}

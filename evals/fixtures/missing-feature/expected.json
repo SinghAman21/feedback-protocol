@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "type": "missing_feature",
+      "summary_keywords": ["csv", "export"],
+      "capability": "csv_export",
+      "endpoint": "/api/v1/subscribers/export",
+      "required_evidence": [
+        "JSON export is supported",
+        "CSV export is not supported"
+      ],
+      "forbidden_claims": [
+        "database bug",
+        "root cause is the database"
+      ]
+    }
+  ],
+  "expect_no_feedback": false,
+  "report_requirements": [
+    "csv export",
+    "json export"
+  ],
+  "forbidden_report_claims": [
+    "the api is broken",
+    "returns 500"
+  ]
+}

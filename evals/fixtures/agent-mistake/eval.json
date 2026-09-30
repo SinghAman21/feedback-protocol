@@ -1,0 +1,6 @@
+{
+  "name": "agent-mistake",
+  "description": "User creation requires the 'email' field; a misspelled field correctly yields 400. The agent must recognize its own error and file nothing.",
+  "version": "1.0",
+  "tags": ["negative-test", "self-correction"]
+}

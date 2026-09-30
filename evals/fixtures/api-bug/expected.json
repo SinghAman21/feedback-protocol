@@ -1,0 +1,26 @@
+{
+  "findings": [
+    {
+      "type": "bug",
+      "summary_keywords": ["500", "invoice"],
+      "endpoint": "/api/v1/invoices",
+      "required_evidence": [
+        "returns 500",
+        "due_date"
+      ],
+      "forbidden_claims": [
+        "database failure",
+        "network partition",
+        "the api is broken"
+      ]
+    }
+  ],
+  "expect_no_feedback": false,
+  "report_requirements": [
+    "invoice without due date",
+    "500"
+  ],
+  "forbidden_report_claims": [
+    "the api is broken"
+  ]
+}

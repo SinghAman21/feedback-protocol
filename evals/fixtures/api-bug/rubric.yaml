@@ -1,0 +1,31 @@
+# Rubric: api-bug
+# Correct behavior: reproduce the 500, report bug with evidence.
+
+criteria:
+  - id: task_understanding
+    description: Report addresses fetching any valid invoice, old or new.
+    required: true
+  - id: investigation_completeness
+    description: Renderer, sample data, docs, and tests consulted.
+    required: true
+  - id: factual_correctness
+    description: Failure tied to missing due_date, not vague breakage.
+    required: true
+  - id: evidence_quality
+    description: Finding carries status, request, and observed behavior.
+    required: true
+  - id: correct_feedback_type
+    description: Finding is typed bug.
+    required: true
+  - id: false_positive_avoidance
+    description: No extra invented findings.
+    required: true
+  - id: protocol_compliance
+    description: Finding validates against the feedback schema.
+    required: true
+  - id: privacy
+    description: No secrets in findings or report.
+    required: true
+  - id: human_readability
+    description: Clear goal, evidence, impact, and next step.
+    required: true

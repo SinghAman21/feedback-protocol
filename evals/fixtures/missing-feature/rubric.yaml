@@ -1,0 +1,31 @@
+# Rubric: missing-feature
+# Correct behavior: file one missing_feature finding with evidence.
+
+criteria:
+  - id: task_understanding
+    description: Report addresses whether CSV export is possible.
+    required: true
+  - id: investigation_completeness
+    description: Implementation, API behavior, docs, and tests consulted.
+    required: true
+  - id: factual_correctness
+    description: No invented causes; JSON works, CSV does not.
+    required: true
+  - id: evidence_quality
+    description: Finding carries what was tried and what was observed.
+    required: true
+  - id: correct_feedback_type
+    description: Finding is typed missing_feature, not bug.
+    required: true
+  - id: false_positive_avoidance
+    description: No extra invented findings beyond the CSV gap.
+    required: true
+  - id: protocol_compliance
+    description: Finding validates against the feedback schema.
+    required: true
+  - id: privacy
+    description: No secrets in findings or report.
+    required: true
+  - id: human_readability
+    description: Clear goal, findings, evidence, impact, next step.
+    required: true

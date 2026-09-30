@@ -1,0 +1,6 @@
+{
+  "name": "api-bug",
+  "description": "Invoice detail endpoint returns 500 for valid invoices without a due date. The agent must reproduce it, report bug with evidence, and avoid vague claims.",
+  "version": "1.0",
+  "tags": ["bug", "positive-test"]
+}

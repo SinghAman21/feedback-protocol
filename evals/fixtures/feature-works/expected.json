@@ -1,0 +1,13 @@
+{
+  "findings": [],
+  "expect_no_feedback": true,
+  "report_requirements": [
+    "json export works",
+    "matches the documented behavior"
+  ],
+  "forbidden_report_claims": [
+    "the api is broken",
+    "returns 500",
+    "pagination is missing"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "performance-problem",
+  "description": "Event listing returns 100,000 records in one response with no pagination. The agent must identify the operational problem without inventing a root cause.",
+  "version": "1.0",
+  "tags": ["performance", "positive-test"]
+}

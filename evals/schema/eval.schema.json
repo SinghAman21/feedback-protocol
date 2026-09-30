@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/feedback-protocol/evals/schema/eval.schema.json",
+  "title": "Eval definition metadata",
+  "description": "Structural metadata for one agent-behavior eval. The task, expected findings, rubric, and fixture repository live in sibling files.",
+  "type": "object",
+  "required": ["name", "description", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Eval identifier; must match the fixture directory name.",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What agent behavior this eval exercises."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Eval definition version, e.g. \"1.0\"."
+    },
+    "task_file": {
+      "type": "string",
+      "default": "task.md",
+      "description": "Task prompt given to the agent, relative to the fixture dir."
+    },
+    "expected_file": {
+      "type": "string",
+      "default": "expected.json",
+      "description": "Semantic ground truth, relative to the fixture dir."
+    },
+    "rubric_file": {
+      "type": "string",
+      "default": "rubric.yaml",
+      "description": "Grading criteria, relative to the fixture dir."
+    },
+    "repo_dir": {
+      "type": "string",
+      "default": "repo",
+      "description": "Fixture repository the agent investigates."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Free-form labels, e.g. [\"negative-test\", \"missing-feature\"]."
+    }
+  }
+}

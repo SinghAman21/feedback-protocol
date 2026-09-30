@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/feedback-protocol/evals/schema/expected-result.schema.json",
+  "title": "Expected eval findings",
+  "description": "Semantic ground truth for one eval. Describes facts the agent must discover, never exact prose. An empty findings list means the correct behavior is to file no feedback.",
+  "type": "object",
+  "required": ["findings"],
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "type": "array",
+      "description": "Each entry is one actionable finding the agent should report as protocol feedback.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["bug", "missing_feature", "unexpected_behavior", "documentation", "performance"],
+            "description": "Feedback protocol type the agent should file."
+          },
+          "summary_keywords": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Keywords expected (in normalized form) in the finding summary."
+          },
+          "capability": {
+            "type": "string",
+            "description": "Missing capability, e.g. \"csv_export\". Matched semantically, not verbatim."
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Endpoint involved, e.g. \"/api/v1/customers/export\". Suffix matching allowed."
+          },
+          "required_evidence": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Facts the agent output must establish (normalized semantic match)."
+          },
+          "forbidden_claims": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Claims that must NOT appear (speculation, misdiagnosis, invented causes)."
+          }
+        }
+      }
+    },
+    "expect_no_feedback": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the correct behavior is to file zero findings."
+    },
+    "report_requirements": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Facts the human-readable report must contain."
+    },
+    "forbidden_report_claims": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Claims the human-readable report must NOT contain."
+    }
+  }
+}

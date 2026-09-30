@@ -1,0 +1,33 @@
+# Rubric: missing-tests
+# Correct behavior: note the untested edge case, file no bug.
+
+criteria:
+  - id: task_understanding
+    description: Report addresses trust in refund behavior incl. zero-amount.
+    required: true
+  - id: investigation_completeness
+    description: Implementation, docs, and test list all consulted.
+    required: true
+  - id: factual_correctness
+    description: Gap described as missing verification, not broken code.
+    required: true
+  - id: evidence_quality
+    description: No findings expected, so no finding-level evidence required.
+    required: false
+    applies_when: no findings expected
+  - id: correct_feedback_type
+    description: No findings expected, so no type to check.
+    required: false
+    applies_when: no findings expected
+  - id: false_positive_avoidance
+    description: Zero findings filed; implementation not declared broken.
+    required: true
+  - id: protocol_compliance
+    description: Any findings filed must validate against the feedback schema.
+    required: true
+  - id: privacy
+    description: No secrets in findings or report.
+    required: true
+  - id: human_readability
+    description: Names the untested edge case and suggests a test.
+    required: true

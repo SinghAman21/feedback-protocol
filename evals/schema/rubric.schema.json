@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/feedback-protocol/evals/schema/rubric.schema.json",
+  "title": "Eval rubric",
+  "description": "Grading criteria for one eval. Each criterion gets pass/fail/partial; the evaluator explains failures. No single opaque numeric score.",
+  "type": "object",
+  "required": ["criteria"],
+  "additionalProperties": false,
+  "properties": {
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "required"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable criterion id, e.g. \"factual_correctness\"."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What this criterion checks."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "True if the scenario fails when this criterion is not a clean pass."
+          },
+          "applies_when": {
+            "type": "string",
+            "description": "Optional condition, e.g. \"findings expected\" or \"no findings expected\"."
+          }
+        }
+      }
+    }
+  }
+}
