@@ -6,6 +6,7 @@ problems they encounter while using backend APIs.
 Version: **0.1** — protocol and specification.
 Python package: **0.2.0** — FastAPI reference implementation of the v0.1 spec.
 Node.js package: **0.4.0** — Express implementation of the same v0.1 spec.
+Central service: **0.5.0** — aggregation + human triage (this repo, `service/`).
 
 Normative documents:
 
@@ -16,6 +17,7 @@ Reference implementation:
 
 - `src/feedback_protocol/` — Python package (`feedback-protocol` on PyPI).
 - `node/` — Node.js/TypeScript package (`feedback-protocol` on npm).
+- `service/` — central feedback service (FastAPI + SQLite, run with Docker).
 - [examples/fastapi/](examples/fastapi/) — minimal runnable FastAPI service.
 - [examples/express/](examples/express/) — minimal runnable Express service.
 
@@ -293,6 +295,82 @@ HTTP protocol does not change.
   `feedbackProtocol({ logger: false })`). Never log payloads, headers,
   cookies, or tokens.
 
+## Central service — architecture (v0.5)
+
+The central service turns individual reports into engineering signals:
+
+```text
+feedback → centralized storage → aggregation → human triage
+```
+
+- **Ingestion** (`POST /feedback`): accepts any protocol-compliant v0.1
+  body plus an optional `service` identifier (string like `"users-api"`
+  or object like `{"name": "users-api", "environment": "production"}`).
+  Secrets are redacted before storage; unknown fields are preserved.
+  Returns the standard `201 {"id", "status": "received"}` receipt, so
+  existing SDK reporters work unchanged.
+- **Storage** (SQLite via `service/db.py`): id, service identity,
+  timestamp, type, agent info, goal, attempt, observed/expected behavior,
+  metadata — never secrets. The store is a narrow abstraction
+  (`save/get/list/set_status`), replaceable without touching HTTP.
+- **Aggregation** (`GET /clusters`): deterministic, explainable grouping
+  — same service + type + method + endpoint + missing capability ⇒ same
+  cluster (stable `cluster_<hash>` id, count, first/last seen,
+  representative report, member ids, status breakdown). No embeddings,
+  no LLM.
+- **Triage** (`PATCH /feedback/{id}`, `PATCH /clusters/{cluster_id}`):
+  `new` → `investigating` → `accepted` / `rejected` → `resolved`.
+  Reports start at `new` and are never auto-confirmed: `accepted` means
+  a human verified a real problem.
+- **Auth**: Bearer API key on everything except `/health` and protocol
+  discovery. See `service/README.md` and "Production considerations"
+  below for the full endpoint list.
+
+v0.5 ends at triage. No PR generation, no repository changes, no merges.
+
+## Central service — local setup
+
+```bash
+# 1. start server (SQLite, no cloud DB needed)
+FEEDBACK_SERVICE_API_KEY=dev-key-change-me uvicorn --factory service.app:create_default_app --port 8001
+#   …or: FEEDBACK_SERVICE_API_KEY=dev-key-change-me docker compose up --build  (port 8001)
+
+# 2. submit feedback
+curl -X POST localhost:8001/feedback -H "Authorization: Bearer dev-key-change-me" \
+  -H 'Content-Type: application/json' \
+  -d '{"service": "users-api", "type": "bug", "summary": "500 on project create"}'
+
+# 3. inspect feedback
+curl -H "Authorization: Bearer dev-key-change-me" localhost:8001/feedback?service=users-api
+
+# 4. inspect clusters (try the A/B/C sample first: python service/seed_sample.py)
+curl -H "Authorization: Bearer dev-key-change-me" localhost:8001/clusters
+
+# 5. change triage status
+curl -X PATCH -H "Authorization: Bearer dev-key-change-me" \
+  -H 'Content-Type: application/json' -d '{"status": "investigating"}' \
+  localhost:8001/feedback/fb_…
+```
+
+**Production considerations.** Change the default API key and keep it
+secret; put the service behind your gateway/SSO for sensitive data.
+Rate-limit ingestion (`429`). Back up the SQLite file (or swap
+`SqliteFeedbackStore` for a managed backend — the HTTP layer does not
+change). Document retention and access (SPEC §5). Secrets are redacted
+at ingestion, but treat stored reports as internal data, not public.
+
+## How v0.5 prepares feedback → investigation → PR
+
+The next milestone can build repository investigation and PR generation
+on top of v0.5 without new protocol work, because each stage already
+produces the next stage's input: `accepted` clusters identify *what* to
+fix (service + endpoint + evidence bundle via member reports);
+`representative` + `feedback_ids` give an investigator the full
+reproduction context; triage history (`investigating` → `accepted` →
+`resolved`) provides the audit trail a PR description needs. v0.5
+deliberately stops at human triage so automation later acts only on
+human-confirmed signals.
+
 ## Agent skill — teaching agents to use the protocol
 
 `skill/SKILL.md` is framework-agnostic instructions for any AI agent
@@ -464,7 +542,7 @@ triage is asynchronous). Errors use standard codes: `400` invalid
 feedback, `401`/`403` unauthorized, `429` rate limited, `5xx` server
 error. See SPEC §3.5.
 
-## 8. Current scope (v0.1 protocol / v0.2–v0.4 implementations)
+## 8. Current scope (v0.1 protocol / v0.2–v0.5 implementations)
 
 Protocol:
 
@@ -502,6 +580,15 @@ v0.4 Node.js package (this repo):
 - Implements the same v0.1 protocol as the Python package — no
   Node-specific protocol (see the parity note at the top).
 
+v0.5 central service (this repo):
+
+- `service/` FastAPI app with SQLite storage: protocol-compliant
+  ingestion (+ optional `service` identity), secret redaction, filtered
+  retrieval, deterministic clusters, and human triage statuses.
+- `docker-compose.yml` + `service/Dockerfile` for local development;
+  `service/seed_sample.py` demonstrates the A/B/C single-cluster case.
+- Stops at triage: no PR generation, no repository changes, no merges.
+
 ## 9. What is intentionally NOT included
 
 - Centralized feedback aggregation, dashboards.
@@ -516,7 +603,7 @@ v0.4 Node.js package (this repo):
 
 ## 10. Roadmap
 
-Possible directions after v0.4 (not commitments):
+Possible directions after v0.5 (not commitments):
 
 - Richer `attempt`/`observed` evidence conventions, additional examples
   per feedback type; optional `Idempotency-Key` semantics.

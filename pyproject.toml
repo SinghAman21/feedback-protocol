@@ -47,7 +47,7 @@ where = ["src"]
 "*" = ["py.typed"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "service/tests"]
 
 [tool.ruff]
 line-length = 100

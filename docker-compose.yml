@@ -1,0 +1,15 @@
+services:
+  feedback-service:
+    build:
+      context: .
+      dockerfile: service/Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      FEEDBACK_SERVICE_API_KEY: ${FEEDBACK_SERVICE_API_KEY:-dev-key-change-me}
+      FEEDBACK_SERVICE_DB: /data/feedback.db
+    volumes:
+      - feedback-data:/data
+
+volumes:
+  feedback-data:
