@@ -56,6 +56,12 @@ docs, validate your request parameters, and retry once. If the fault is
 still unexplained after that, treat it as category 5 or 7 — with evidence,
 not a theory about the cause.
 
+When slowness and a missing capability coincide, classify by measurement:
+if the endpoint meets its latency budget but lacks what the goal needs
+(e.g. no pagination on a quick endpoint), file `missing_feature`; if
+measured responses breach the budget or block the goal on time — even
+when a capability gap contributes — file `performance`.
+
 ## Recovery before reporting
 
 - **Agent error:** correct the request and retry. Never report your own
@@ -66,7 +72,8 @@ not a theory about the cause.
   quota, surface the validation message).
 - **Temporary failure:** retry with exponential backoff and jitter. Report
   nothing if a retry succeeds. Only escalate to `performance` if failures
-  persist and block the goal.
+  persist and block the goal. Measure a slow endpoint at least 3 times
+  before reporting it: a single slow response is category 4, not evidence.
 
 ## Discovery
 
@@ -90,7 +97,9 @@ Never assume a service accepts feedback. Discover support first:
 
 ## Collecting evidence
 
-A good report contains facts. Collect these fields when available:
+Investigate read-only: never change service state, data, or configuration
+to gather evidence. A good report contains facts. Collect these fields
+when available:
 
 - `goal` — the user's goal in one sentence.
 - `attempt.method` / `attempt.path` — the endpoint and HTTP method tried.
@@ -128,7 +137,13 @@ Good (observed facts):
 > `req_123`."
 
 Only `type` and `summary` are required — file the report even when some
-evidence is unavailable rather than guessing to fill fields.
+evidence is unavailable rather than guessing to fill fields. But whatever
+decisive facts you do have belong in the structured fields (`observed`,
+`expected`, `description`), not only in the human-readable report:
+triage runs on the structured fields. Write `summary` so it stands alone
+— endpoint, observed behavior, and key measurement (e.g. "`GET
+/api/v1/events` takes ~3s per page, docs promise p99 under 500ms"). It is
+the first thing maintainers read and may be the only part quoted onward.
 
 ## Submission
 

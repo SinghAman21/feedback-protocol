@@ -3,10 +3,55 @@
 An open, language-independent protocol that lets AI agents report actionable
 problems they encounter while using backend APIs.
 
-Version: **0.1** — protocol and specification.
-Python package: **0.2.0** — FastAPI reference implementation of the v0.1 spec.
-Node.js package: **0.4.0** — Express implementation of the same v0.1 spec.
-Central service: **0.5.0** — aggregation + human triage (this repo, `service/`).
+## What does this do?
+
+When an AI agent using your API hits a genuine service-side problem — a bug,
+a missing capability, wrong docs, or unusable latency — that signal is
+usually lost in a chat transcript. The Feedback Protocol gives it a
+structured home: the agent files a machine-readable report (evidence, not
+speculation) and the service triages it. Agents must never file their own
+mistakes, user errors, or transient blips as API bugs.
+
+## Architecture
+
+```text
+Agent → Backend API → problem → investigate → classify (8 categories)
+  → discover  GET /.well-known/feedback-protocol
+  → report    POST /feedback → 201 {"id": "fb_…", "status": "received"}
+  → aggregate (deterministic clusters) → human triage → (future) fix
+```
+
+Four layers (SPEC §1): **protocol** (discovery + submission contract),
+**agent skill** (teaches agents when and how to report), **SDKs**
+(implement the protocol), **central server** (storage, aggregation,
+triage — optional).
+
+## Install the skill
+
+`skill/SKILL.md` is the source of truth. Copy it into the agent's skills
+directory:
+
+```bash
+# project scope
+mkdir -p .opencode/skills/feedback-protocol
+cp skill/SKILL.md .opencode/skills/feedback-protocol/SKILL.md
+# personal scope
+mkdir -p ~/.config/opencode/skills/feedback-protocol
+cp skill/SKILL.md ~/.config/opencode/skills/feedback-protocol/SKILL.md
+```
+
+…or load it into context as a system prompt / slash-command body before API
+work. Keep local installs in sync with `skill/SKILL.md`. Full protocol:
+[Agent skill](#agent-skill--the-reporting-protocol-for-ai-agents),
+verified behavior: [evals 8/8](evals/README.md).
+
+## Status
+
+- [x] Protocol v0.1 ([SPEC.md](SPEC.md) + JSON Schema).
+- [x] Agent skill + verified agent behavior (evals 8/8).
+- [x] Central service via Docker (`service/`, v0.5).
+- [ ] Python package (`src/feedback_protocol/`) — TODO.
+- [ ] Node.js package (`node/`) — TODO.
 
 Normative documents:
 
@@ -15,8 +60,9 @@ Normative documents:
 
 Reference implementation:
 
-- `src/feedback_protocol/` — Python package (`feedback-protocol` on PyPI).
-- `node/` — Node.js/TypeScript package (`feedback-protocol` on npm).
+- `src/feedback_protocol/` — Python package (publishing — TODO).
+- `node/` — Node.js/TypeScript package (publishing — TODO).
+- `skill/SKILL.md` — agent skill: teaches AI agents when and how to report (see below).
 - `service/` — central feedback service (FastAPI + SQLite, run with Docker).
 - [examples/fastapi/](examples/fastapi/) — minimal runnable FastAPI service.
 - [examples/express/](examples/express/) — minimal runnable Express service.
@@ -28,6 +74,9 @@ format, same receipt shape). `schema/feedback.schema.json` remains the
 source of truth for both; there is no Node-specific protocol.
 
 ## Python package — installation
+
+> **Status: TODO** — reference implementation in progress, not yet published.
+> Below describes the target integration.
 
 Requires Python 3.10+.
 
@@ -170,6 +219,9 @@ the HTTP protocol does not change. See `examples/fastapi/app.py` and
   redact secrets before submitting.
 
 ## Node.js package — installation
+
+> **Status: TODO** — reference implementation in progress, not yet published.
+> Below describes the target integration.
 
 Requires Node.js 20+ and Express 4 or 5 (peer dependency).
 
@@ -418,31 +470,69 @@ reproduction context; triage history (`investigating` → `accepted` →
 deliberately stops at human triage so automation later acts only on
 human-confirmed signals.
 
-## Agent skill — teaching agents to use the protocol
+## Agent skill — the reporting protocol for AI agents
 
-`skill/SKILL.md` is framework-agnostic instructions for any AI agent
-capable of calling APIs. It teaches the agent to:
+`skill/SKILL.md` is the agent-facing side of the protocol: framework-agnostic
+instructions (SKILL.md frontmatter format — compatible with OpenCode, Claude
+Code, and other skill-capable agents) that teach an agent when to report,
+when to stay silent, and how to write a report maintainers can act on. It is
+the normative client-behavior companion to SPEC §4.
 
-1. Understand the user's goal and attempt it normally.
-2. Classify any failure (agent error, user/input error, expected behavior,
-   temporary failure, API bug, missing feature, documentation mismatch,
-   performance issue).
-3. Recover where possible (fix its own request, ask the user, retry
-   transient failures) instead of reporting.
-4. Discover support via `GET /.well-known/feedback-protocol` (falling
-   back to explicit API docs only — never blind-probing `/feedback`),
-   collect evidence (facts, not theories about internals), and submit a
-   report with only `type` + `summary` required.
-5. Tell the user the issue was *reported*, never that it was *fixed* —
-   and never include passwords, tokens, cookies, or personal data.
+### The agent loop
 
-To use it, load `skill/SKILL.md` into the agent's context (e.g. as a
-system prompt, slash-command body, or retrieved instructions) before it
-starts working with APIs. It includes ten worked examples — six where
-feedback is filed (500, documented-404, missing pagination,
-documentation mismatch, unexpected truncation, slow endpoint) and four
-where it must stay silent (bad credentials, agent's own invalid request,
-transient 503, out-of-scope feature request).
+1. **Goal** — state the user's goal in one sentence.
+2. **Attempt** — accomplish it normally through the API, as documented.
+3. **Classify** — on failure, place it in exactly one of eight categories:
+
+| # | Category | Report? |
+|---|----------|---------|
+| 1 | Agent error (wrong endpoint, bad parameters, misread docs) | No — fix and retry |
+| 2 | User/input error (invalid data or credentials) | No — tell the user |
+| 3 | Expected behavior (validation error, documented quota) | No — handle it |
+| 4 | Temporary failure (single 503/timeout, retry succeeds) | No — backoff + retry |
+| 5 | API bug (documented endpoint violates its contract) | Yes — `bug` |
+| 6 | Missing feature (works as documented, lacks a needed capability) | Yes — `missing_feature` |
+| 7 | Documentation mismatch (docs contradict behavior) | Yes — `documentation` |
+| 8 | Performance issue (persistent, measured, goal-blocking slowness) | Yes — `performance` |
+
+Borderline rule: slowness coinciding with a missing capability is classified
+by measurement — fast-but-incomplete is `missing_feature`; budget-breaching
+is `performance`. A slow endpoint is measured at least 3 times before
+reporting; a single slow response is category 4, not evidence.
+
+4. **Recover** — fix its own mistakes, ask the user for correct input, retry
+   transients with backoff. Only genuinely actionable, unrecoverable,
+   service-side issues proceed.
+5. **Discover** — `GET /.well-known/feedback-protocol` (falling back to
+   explicit API docs only — never blind-probing `/feedback`).
+6. **Evidence** — facts, never theories about internals: goal, attempt,
+   observed, expected, measured timings. Investigation is read-only.
+   Decisive facts live in the structured fields (`observed`, `expected`,
+   `description`); the `summary` stands alone (endpoint + behavior +
+   measurement). Reports never carry passwords, tokens, cookies, or
+   personal data.
+7. **Tell the user** — what was tried, what failed, the report id (`fb_…`)
+   — reported, never fixed. If nothing was filed, one sentence saying why.
+
+### Install and use
+
+`skill/SKILL.md` is the source of truth — keep local installs in sync with
+it. Copy it into the agent's skills directory (e.g.
+`.opencode/skills/feedback-protocol/` for project scope,
+`~/.config/opencode/skills/` for personal scope), or load it into context
+as a system prompt / slash-command body before API work. It ships ten
+worked examples: six where feedback is filed (500, documented-404, missing
+pagination, documentation mismatch, unexpected truncation, slow endpoint)
+and four where the agent must stay silent (bad credentials, the agent's own
+invalid request, transient 503, out-of-scope feature request).
+
+### Verified behavior
+
+`evals/` grades real agent runs against 8 scenarios — bugs, missing
+features, documentation mismatches, performance problems, plus negative
+cases where silence is correct — scoring both the machine-readable
+findings and the human-readable report. Currently 8/8 passing. See
+[evals/README.md](evals/README.md).
 
 ---
 
