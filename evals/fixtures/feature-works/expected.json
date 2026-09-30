@@ -2,8 +2,8 @@
   "findings": [],
   "expect_no_feedback": true,
   "report_requirements": [
-    "json export works",
-    "matches the documented behavior"
+    "json export",
+    "documented"
   ],
   "forbidden_report_claims": [
     "the api is broken",

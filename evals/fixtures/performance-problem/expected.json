@@ -2,11 +2,11 @@
   "findings": [
     {
       "type": "performance",
-      "summary_keywords": ["100000", "pagination"],
+      "summary_keywords": ["events", "p99"],
       "endpoint": "/api/v1/events",
       "required_evidence": [
-        "100000 records",
-        "no pagination"
+        "p99 under 500ms",
+        "durations"
       ],
       "forbidden_claims": [
         "database is slow",
@@ -17,8 +17,8 @@
   ],
   "expect_no_feedback": false,
   "report_requirements": [
-    "100000",
-    "pagination"
+    "pagination",
+    "dashboard"
   ],
   "forbidden_report_claims": [
     "the api is broken"

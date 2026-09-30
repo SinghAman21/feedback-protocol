@@ -222,7 +222,8 @@ class OpencodeAgentRunner(AgentRunner):
             f"<task>\n{task}\n</task>\n\n"
             "The task's repo is your current working directory. Investigate "
             "for real: list files, read the docs and implementation, run the "
-            "test suite or repro commands. Do NOT read anything outside the "
+            "test suite or repro commands. Do NOT modify any files; this is a "
+            "read-only investigation. Do NOT read anything outside the "
             "working directory. Do NOT invent root causes; report only what "
             "you observed. NEVER include secrets, tokens, passwords, cookies, "
             "or Authorization headers in your output.\n\n"
@@ -241,7 +242,11 @@ class OpencodeAgentRunner(AgentRunner):
             '"suggestion", "agent" where known.\n'
             '- markdown-report: start with a "# " title, use "## " sections '
             "(Goal, Findings, Evidence, Impact, Suggested next step), "
-            "minimum 200 characters."
+            "minimum 200 characters.\n"
+            "Put the decisive facts (exact error strings, measured numbers, "
+            "doc quotes, endpoint and capability names) inside the finding "
+            "object's description/observed/expected fields, not only in the "
+            "markdown report."
         )
 
     @staticmethod

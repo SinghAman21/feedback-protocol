@@ -1,0 +1,22 @@
+[
+  {
+    "type": "documentation",
+    "summary": "Docs describe DELETE /api/v1/users/{id} but API returns 404 unknown_route; deletion requires POST /api/v1/users/{id}/delete",
+    "goal": "Reliably delete a user by following the documentation",
+    "attempt": {
+      "method": "DELETE",
+      "path": "/api/v1/users/u1"
+    },
+    "observed": {
+      "status": 404,
+      "body": "{\"error\": \"unknown_route\"}",
+      "working_endpoint": "POST /api/v1/users/u1/delete returns 200 {\"deleted\": \"u1\"}"
+    },
+    "expected": "200 with {\"deleted\": \"<id>\"} on success per api.md DELETE /api/v1/users/{id}; 404 only with {\"error\": \"not_found\"} for unknown id",
+    "suggestion": "Update api.md to document POST /api/v1/users/{id}/delete or add DELETE /api/v1/users/{id} route",
+    "agent": {
+      "name": "investigation-agent",
+      "version": "1.0.0"
+    }
+  }
+]

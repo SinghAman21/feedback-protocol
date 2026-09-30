@@ -1,0 +1,25 @@
+[
+  {
+    "type": "missing_feature",
+    "summary": "Subscriber export supports only JSON; ?format=csv returns 400 unsupported export format",
+    "goal": "Reliably export subscriber data as CSV for the marketing team",
+    "attempt": {
+      "method": "GET",
+      "path": "/api/v1/subscribers/export?format=csv"
+    },
+    "observed": {
+      "status": 400,
+      "error": "unsupported export format: 'csv'",
+      "supported_formats": [
+        "json"
+      ]
+    },
+    "expected": "CSV export via ?format=csv; api.md states only \"json\" is supported and marketing copies JSON by hand",
+    "missing_capability": "csv_export",
+    "suggestion": "Support format=csv returning RFC4180 CSV with email,name header",
+    "agent": {
+      "name": "example-agent",
+      "version": "1.0.0"
+    }
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "type": "bug",
+    "summary": "GET /api/v1/invoices/inv_2 returns 500 for valid invoice without due_date",
+    "goal": "Reliably fetch any valid invoice, including older invoices created before April 2026",
+    "attempt": {
+      "method": "GET",
+      "path": "/api/v1/invoices/inv_2"
+    },
+    "observed": {
+      "status": 500,
+      "error": "internal_error",
+      "body": "{\"error\": \"internal_error\"}",
+      "repro": "render_invoice('inv_2') -> (500, '{\"error\": \"internal_error\"}') vs render_invoice('inv_1') -> 200"
+    },
+    "expected": "200 with {\"id\", \"total_cents\", \"due_label\"} for a known id per api.md; note says due_date is optional and endpoint must still render pre-April 2026 invoices",
+    "suggestion": "Render invoices without due_date instead of raising KeyError",
+    "agent": {
+      "name": "opencode"
+    }
+  }
+]

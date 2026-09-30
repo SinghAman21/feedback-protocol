@@ -1,0 +1,27 @@
+[
+  {
+    "type": "performance",
+    "summary": "GET /api/v1/events takes ~3s per page, docs promise p99 under 500ms",
+    "goal": "Load recent audit events quickly for dashboard with ~100,000 events",
+    "attempt": {
+      "method": "GET",
+      "path": "/api/v1/events"
+    },
+    "observed": {
+      "status": 200,
+      "durations_s": [
+        3.09,
+        3.07,
+        3.07
+      ],
+      "retries": 3,
+      "item_count": 100000,
+      "returned_count": 50
+    },
+    "expected": "p99 under 500ms per api.md: Performance budget: p99 under 500ms for event listing",
+    "agent": {
+      "name": "opencode",
+      "version": "1.0.0"
+    }
+  }
+]

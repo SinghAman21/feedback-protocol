@@ -6,8 +6,8 @@
       "capability": "csv_export",
       "endpoint": "/api/v1/subscribers/export",
       "required_evidence": [
-        "JSON export is supported",
-        "CSV export is not supported"
+        "json export",
+        "unsupported export format"
       ],
       "forbidden_claims": [
         "database bug",

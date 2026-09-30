@@ -43,12 +43,20 @@ _PRIVACY_PATTERNS = (
 
 
 # Whole-word paraphrase equivalences applied before matching, so common
-# rewordings ("unavailable" vs "not supported") compare equal.
+# rewordings ("unavailable" vs "not supported", "docs describe" vs
+# "docs say") compare equal.
 # Deterministic and documented; not a similarity model.
 _SYNONYMS = (
     (re.compile(r"\bunavailable\b"), "not supported"),
     (re.compile(r"\bwithout\b"), "no"),
     (re.compile(r"\b(can't|cannot|doesn't|don't|isn't|aren't)\b"), "not"),
+    (
+        re.compile(
+            r"\b(describe|describes|described|promise|promises|promised|"
+            r"state|states|stated|document|documents|documented)\b"
+        ),
+        "say",
+    ),
 )
 
 

@@ -60,7 +60,7 @@ report saying "The API does not currently provide CSV export for POST
 ## Running evals
 
 ```bash
-python -m evals.runner            # discover + validate all evals
+python -m evals.runner --execute
 python -m evals.runner --eval missing-feature
 python -m evals.runner --list
 ```
