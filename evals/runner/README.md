@@ -52,9 +52,9 @@ report = run_eval(definition, MyAgentRunner().run(
 ```
 
 `report.passed` is true only when every **required** rubric criterion is
-a clean `pass`. Use `reporters.render_text([report, ...])` for the
-human-readable summary or `reporters.write_reports(...)` for
-`summary.txt` + per-eval JSON in `evals/reports/`.
+a clean `pass`. The CLI writes the agent's raw output next to its fixture
+(`agent-result.json` + `agent-report.md`) and prints the graded summary
+with `reporters.render_text([report, ...])`.
 
 ## Modules
 

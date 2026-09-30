@@ -82,7 +82,7 @@ evals/
 ├── README.md            # this file
 ├── schema/              # JSON schemas for eval definitions
 ├── runner/              # loader, evaluator, reporters, CLI
-├── fixtures/            # 8 scenarios (repo + task + expected + rubric)
-├── tests/               # tests for the eval framework itself
-└── reports/             # evaluation output goes here
+├── fixtures/            # 8 scenarios (repo + task + expected + rubric,
+│                         # plus agent-result.json + agent-report.md after a run)
+└── tests/               # tests for the eval framework itself
 ```
